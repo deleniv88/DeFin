@@ -214,6 +214,12 @@
   .tx-amt.pos{color:var(--income)}
   .tx-amt.neg{color:var(--ink)}
   th.right,td.right{text-align:right}
+  .tx-del-cell{width:34px;text-align:right;padding-left:0!important}
+  .tx-del{width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;color:var(--faint);opacity:0;transition:.14s}
+  .tx-table tbody tr:hover .tx-del{opacity:1}
+  .tx-del:hover{background:var(--expense-soft);color:var(--expense)}
+  .tx-del svg{width:14px;height:14px}
+  @media(hover:none){ .tx-del{opacity:.6} }
 
   /* category bars (expenses page) */
   .catbar-list{display:flex;flex-direction:column;gap:15px;margin-top:6px}
@@ -576,7 +582,7 @@
           <div class="card-title">Останні операції</div>
         </div>
         <table class="tx-table">
-          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="txBody"></tbody>
         </table>
       </div>
@@ -601,7 +607,7 @@
       <div class="card">
         <div class="card-head"><div class="card-title">Доходи — операції</div></div>
         <table class="tx-table">
-          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="incTxBody"></tbody>
         </table>
       </div>
@@ -633,7 +639,7 @@
         <div class="card">
           <div class="card-head"><div class="card-title">Витрати — операції</div></div>
           <table class="tx-table">
-            <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+            <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
             <tbody id="expTxBody"></tbody>
           </table>
         </div>
@@ -834,7 +840,7 @@
    Поки порожні — застосунок працює як демо (нічого не пише в базу).
    ============================================================ */
 const SUPABASE_URL      = 'https://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
-const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9'; 
+const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9';   // ← anon public ключ
 
 const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -1163,14 +1169,19 @@ function renderDonut(svgId, legendId, totalId, cats){
 function txRow(t){
   const pos = t.amt>0;
   const sign = pos ? '+' : '−';
+  const key = t.id ? ('id:'+t.id) : ('k:'+t._k);
   return `<tr>
     <td class="tx-date">${t.d}</td>
     <td><span class="tx-cat"><i class="dot" style="background:${t.color}"></i>${t.cat}${t.sub?' · '+t.sub:''}</span></td>
     <td class="tx-note">${t.note}</td>
     <td class="tx-amt ${pos?'pos':'neg'}">${sign}${fmt(Math.abs(t.amt))} zł</td>
+    <td class="tx-del-cell"><button class="tx-del" data-txkey="${key}" title="Видалити операцію" aria-label="Видалити">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button></td>
   </tr>`;
 }
 function renderTx(){
+  transactions.forEach((t,i)=>{ if(t._k==null) t._k=i+'_'+(t.cat||'')+'_'+(t.amt||0); });
   $('#txBody').innerHTML = transactions.map(txRow).join('');
   $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income').map(txRow).join('');
   $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense').map(txRow).join('');
@@ -2063,6 +2074,30 @@ $('#saveBtn').addEventListener('click', async ()=>{
   transactions.unshift({d:'31 лип', cat:catName, sub:subName||undefined, color:catColors[catName]||'#7E7A6B', note, amt:signed, type:modalType});
   renderAll();
   closeModal();
+});
+
+/* ===== delete a single transaction ===== */
+document.addEventListener('click', async (e)=>{
+  const btn=e.target.closest('.tx-del'); if(!btn)return;
+  const key=btn.dataset.txkey||'';
+  const t = key.startsWith('id:')
+    ? transactions.find(x=>String(x.id)===key.slice(3))
+    : transactions.find(x=>String(x._k)===key.slice(2));
+  if(!t)return;
+  const label = `${t.cat}${t.sub?' · '+t.sub:''} — ${fmt(Math.abs(t.amt))} zł`;
+  if(!confirm('Видалити операцію?\n'+label))return;
+
+  if(DB_ON && t.id){
+    btn.disabled=true;
+    const { error } = await sb.from('transactions').delete().eq('id', t.id);
+    if(error){ btn.disabled=false; alert('Не вдалося видалити: '+error.message); return; }
+    await reload();
+    return;
+  }
+  // демо / рядок без id — видаляємо локально
+  const idx = transactions.indexOf(t);
+  if(idx>-1) transactions.splice(idx,1);
+  renderAll();
 });
 
 /* ===== edit category / subcategory (works in Categories AND Expenses) ===== */
