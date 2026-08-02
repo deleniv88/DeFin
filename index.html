@@ -368,6 +368,14 @@
   .set-danger{border-color:rgba(184,80,58,.25)}
   .demo-user{opacity:.85}
 
+  /* ---------- app loader ---------- */
+  .app-loader{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(700px 420px at 80% 0%,rgba(73,165,116,.16),transparent 60%),linear-gradient(180deg,#EFF1EC,#E1E8E5)}
+  .loader-box{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .spinner{width:42px;height:42px;border-radius:50%;border:3px solid rgba(47,122,85,.18);border-top-color:var(--income);animation:spin .8s linear infinite}
+  .loader-txt{font-size:13px;color:var(--muted);font-weight:500}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
   /* ---------- responsive ---------- */
   @media(max-width:1000px){
     .grid-2{grid-template-columns:1fr}
@@ -766,6 +774,14 @@
   </div>
 </div>
 
+<!-- APP LOADER -->
+<div class="app-loader" id="appLoader" style="display:none">
+  <div class="loader-box">
+    <div class="spinner"></div>
+    <div class="loader-txt">Завантаження даних…</div>
+  </div>
+</div>
+
 <!-- AUTH GATE -->
 <div class="auth-gate" id="authGate" style="display:none">
   <div class="auth-card">
@@ -796,8 +812,8 @@
    Встав сюди свої значення з Supabase → Settings → API.
    Поки порожні — застосунок працює як демо (нічого не пише в базу).
    ============================================================ */
-const SUPABASE_URL      = 'http://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
-const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9';   // ← anon public ключ
+const SUPABASE_URL      = '';   // ← Project URL
+const SUPABASE_ANON_KEY = '';   // ← anon public ключ
 
 const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -1512,14 +1528,22 @@ function setAuthMode(m){
   authMsg('');
 }
 
+let _loading=false, _loadedOnce=false;
 async function loadUserData(){
+  if(_loading) return;              // не дублювати паралельні завантаження
+  _loading=true;
+  showLoader(true);
   const now=new Date();
   PERIOD={year:now.getFullYear(), month:now.getMonth(), label:MONTHS_FULL[now.getMonth()]+' '+now.getFullYear()};
   currentYear=PERIOD.year;
   setupYearOptions();
-  try{ await loadFromDB(); }catch(err){ console.error('Supabase load failed:',err); }
+  try{ await loadFromDB(); _loadedOnce=true; }
+  catch(err){ console.error('Supabase load failed:',err); }
   renderAll();
+  showLoader(false);
+  _loading=false;
 }
+function showLoader(on){ const el=$('#appLoader'); if(el) el.style.display = on ? 'flex' : 'none'; }
 
 function fillUserPanel(user){
   if(!user) return;
@@ -1535,7 +1559,10 @@ function fillUserPanel(user){
   const ps=$('#pageSub'); if(ps) ps.textContent='Привіт, '+name+' — ось твої фінанси за '+PERIOD.label;
 }
 
+let _signedInHandled=false;
 async function onSignedIn(user){
+  if(_signedInHandled) return;
+  _signedInHandled=true;
   showGate(false);
   fillUserPanel(user);
   await loadUserData();
@@ -1585,9 +1612,9 @@ if(DB_ON){
   $('#logoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
   $('#pgLogout').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
 
-  // react to auth state
-  sb.auth.onAuthStateChange((_evt, session)=>{
-    if(session && session.user){ onSignedIn(session.user); }
+  // react to auth state — реагуємо лише на справжній вхід, щоб не дублювати завантаження
+  sb.auth.onAuthStateChange((evt, session)=>{
+    if(evt==='SIGNED_IN' && session && session.user && !_loadedOnce){ onSignedIn(session.user); }
   });
 }
 
