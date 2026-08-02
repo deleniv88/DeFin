@@ -233,15 +233,15 @@
   .var-tag{font-size:10px;font-weight:600;color:var(--faint);background:var(--surface-2);padding:1px 6px;border-radius:20px}
 
   /* categories page */
-  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:4px}
-  .cat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:15px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+  .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px;align-items:stretch}
+  .cat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow);min-height:70px}
   .cat-swatch{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:18px;line-height:1}
   .cat-card .info{flex:1;min-width:0}
-  .cat-card .info .t{font-weight:600;font-size:14px}
+  .cat-card .info .t{font-weight:600;font-size:13.5px}
   .cat-card .info .s{font-size:11.5px;color:var(--faint);margin-top:1px}
   .badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.03em;color:var(--income);background:var(--income-soft);padding:2px 7px;border-radius:20px;margin-top:5px}
-  .t-row{display:flex;align-items:center;gap:5px;min-width:0}
-  .t-row .t{white-space:normal;line-height:1.25;word-break:break-word}
+  .t-row{display:flex;align-items:center;gap:4px;min-width:0}
+  .t-row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .edit-btn{width:22px;height:22px;border-radius:6px;display:inline-grid;place-items:center;color:var(--faint);flex:none;transition:.15s}
   .edit-btn:hover{background:var(--surface-2);color:var(--ink)}
   .edit-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -265,7 +265,15 @@
   .switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
   .switch.on .knob{left:20px}
   .hint{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.4}
-  .cat-grid{align-items:start}
+  .btn-danger{margin-right:auto;background:transparent;color:var(--expense);border:1px solid rgba(184,80,58,.3);border-radius:11px;padding:12px 14px;font-weight:600;font-size:13.5px;transition:.15s}
+  .btn-danger:hover{background:var(--expense-soft)}
+  .del-confirm{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+  .del-q{font-size:13.5px;font-weight:600;margin-bottom:11px}
+  .del-opts{display:flex;flex-direction:column;gap:8px}
+  .del-opts button{text-align:left;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);font-size:13.5px;font-weight:500;transition:.15s}
+  .del-opts button:hover{border-color:var(--border-strong);background:var(--surface)}
+  .del-opts button.danger{color:var(--expense);border-color:rgba(184,80,58,.3)}
+  .del-opts button.danger:hover{background:var(--expense-soft)}
   .cat-card.has-subs{flex-direction:column;align-items:stretch;grid-column:1/-1}
   .cat-head{display:flex;align-items:center;gap:12px;width:100%}
   .cat-head .total{margin-left:auto;font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;white-space:nowrap}
@@ -371,6 +379,13 @@
   /* ---------- app loader ---------- */
   .app-loader{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
     background:radial-gradient(700px 420px at 80% 0%,rgba(73,165,116,.16),transparent 60%),linear-gradient(180deg,#EFF1EC,#E1E8E5)}
+  .chart-tip{position:fixed;z-index:90;pointer-events:none;background:var(--ink);color:#fff;border-radius:10px;padding:9px 11px;box-shadow:0 8px 24px -8px rgba(0,0,0,.4);font-size:12px;min-width:120px}
+  .chart-tip .tip-h{font-weight:700;font-size:12px;margin-bottom:6px;font-family:var(--display)}
+  .chart-tip .tip-row{display:flex;align-items:center;gap:7px;margin-top:3px}
+  .chart-tip .tip-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .chart-tip .tip-k{color:rgba(255,255,255,.7)}
+  .chart-tip .tip-v{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+  .hz{cursor:crosshair}
   .loader-box{display:flex;flex-direction:column;align-items:center;gap:16px}
   .spinner{width:42px;height:42px;border-radius:50%;border:3px solid rgba(47,122,85,.18);border-top-color:var(--income);animation:spin .8s linear infinite}
   .loader-txt{font-size:13px;color:var(--muted);font-weight:500}
@@ -383,6 +398,7 @@
     .set-grid{grid-template-columns:1fr}
     .stats{grid-template-columns:repeat(2,1fr)}
     .year-grid{grid-template-columns:1fr}
+    .cat-grid{grid-template-columns:repeat(2,1fr)}
   }
   @media(max-width:760px){
     .shell{grid-template-columns:1fr}
@@ -395,6 +411,7 @@
     .scrim.show{display:block}
     .catbar{grid-template-columns:110px 1fr auto;gap:10px}
     .catbar .nm{font-size:12.5px}
+    .cat-grid{grid-template-columns:1fr}
   }
   @media(max-width:440px){
     .stats{grid-template-columns:1fr}
@@ -728,11 +745,11 @@
       <div class="hint">Додаватиметься автоматично щомісяця. Назву й суму можна змінити в розділі «Категорії».</div>
     </div>
     <div class="field">
-      <label>Дата</label>
+      <label id="fDateLabel">Дата</label>
       <input type="date" id="fDate">
     </div>
     <div class="field">
-      <label>Нотатка</label>
+      <label id="fNoteLabel">Нотатка</label>
       <input type="text" id="fNote" placeholder="напр. Biedronka, пальне…">
     </div>
     <div class="modal-actions">
@@ -768,8 +785,13 @@
       <span class="cur">zł</span>
     </div>
     <div class="modal-actions">
+      <button class="btn-danger" id="catDeleteBtn" title="Видалити">Видалити</button>
       <button class="btn-ghost" id="catCancelBtn">Скасувати</button>
       <button class="btn-save" id="catSaveBtn">Зберегти</button>
+    </div>
+    <div class="del-confirm" id="delConfirm" style="display:none">
+      <div class="del-q" id="delQ">Видалити цю категорію?</div>
+      <div class="del-opts" id="delOpts"></div>
     </div>
   </div>
 </div>
@@ -812,8 +834,8 @@
    Встав сюди свої значення з Supabase → Settings → API.
    Поки порожні — застосунок працює як демо (нічого не пише в базу).
    ============================================================ */
-const SUPABASE_URL      = 'https://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
-const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9';   // ← anon public ключ
+const SUPABASE_URL      = '';   // ← Project URL
+const SUPABASE_ANON_KEY = '';   // ← anon public ключ
 
 const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -1035,10 +1057,51 @@ function renderArea(svgId, labels, series, opts){
       paths+=`<path d="${line}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
     pts.forEach((p,i)=>{
-      dots+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i===pts.length-1?3.5:2.4}" fill="#fff" stroke="${s.color}" stroke-width="2"><title>${labels[i]}: ${fmt(s.vals[i])} zł</title></circle>`;
+      dots+=`<circle class="pt" data-si="${si}" data-i="${i}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i===pts.length-1?3.5:2.4}" fill="#fff" stroke="${s.color}" stroke-width="2"/>`;
     });
   });
-  svg.innerHTML=`<defs>${defs}</defs>${grid}${paths}${dots}${labelsSvg}`;
+  // невидимі вертикальні зони наведення (по одній на місяць) + маркер
+  let zones=`<line id="${svgId}_vline" x1="0" y1="${padTop}" x2="0" y2="${baseY}" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="3 4" style="opacity:0;pointer-events:none"/>`;
+  const bandW=plotW/n;
+  labels.forEach((lb,i)=>{
+    const cx=X(i);
+    zones+=`<rect class="hz" data-i="${i}" x="${(cx-bandW/2).toFixed(1)}" y="${padTop}" width="${bandW.toFixed(1)}" height="${plotH}" fill="transparent"/>`;
+  });
+  svg.innerHTML=`<defs>${defs}</defs>${grid}${paths}${dots}${zones}${labelsSvg}`;
+
+  // тултіп
+  const meta={labels, series:active, X, Y, svgId};
+  svg.__chart=meta;
+  attachChartTooltip(svg);
+}
+
+function ensureTooltipEl(){
+  let tt=document.getElementById('chartTip');
+  if(!tt){ tt=document.createElement('div'); tt.id='chartTip'; tt.className='chart-tip'; tt.style.display='none'; document.body.appendChild(tt); }
+  return tt;
+}
+function attachChartTooltip(svg){
+  if(svg.__tipBound) return; svg.__tipBound=true;
+  const tt=ensureTooltipEl();
+  const vline=()=>document.getElementById(svg.id+'_vline');
+  svg.addEventListener('mousemove', e=>{
+    const zone=e.target.closest('.hz'); const m=svg.__chart; if(!zone||!m){ return; }
+    const i=+zone.dataset.i;
+    const rows=m.series.map(s=>`<div class="tip-row"><span class="tip-dot" style="background:${s.color}"></span><span class="tip-k">${s.key==='income'?'Дохід':'Витрати'}</span><span class="tip-v">${fmt(s.vals[i])} zł</span></div>`).join('');
+    tt.innerHTML=`<div class="tip-h">${m.labels[i]}</div>${rows}`;
+    tt.style.display='block';
+    tt.style.left=(e.clientX+14)+'px';
+    tt.style.top=(e.clientY-10)+'px';
+    // вертикальна лінія
+    const vl=vline(); if(vl){ const cx=m.X(i); vl.setAttribute('x1',cx); vl.setAttribute('x2',cx); vl.style.opacity='0.7'; }
+    // підсвітити точки цього місяця
+    svg.querySelectorAll('.pt').forEach(p=>{ p.setAttribute('r', (+p.dataset.i===i)?'5':( p.dataset.i==(m.labels.length-1)?'3.5':'2.4')); });
+  });
+  svg.addEventListener('mouseleave', ()=>{
+    tt.style.display='none';
+    const vl=vline(); if(vl) vl.style.opacity='0';
+    svg.querySelectorAll('.pt').forEach(p=>{ const m=svg.__chart; p.setAttribute('r', (m&&+p.dataset.i===m.labels.length-1)?'3.5':'2.4'); });
+  });
 }
 
 /* ============ DONUT ============ */
@@ -1290,12 +1353,92 @@ function openCatModal(opt){
   setCatSwitch(allowFixed ? fixed : false);
   if(!allowFixed){ $('#cAmountField').style.display='none'; }
   $('#cAmount').value = amount;
+  $('#delConfirm').style.display='none';
+  $('#catDeleteBtn').style.display = (opt.kind==='newsub') ? 'none' : 'inline-flex';
   $('#catModalBack').classList.add('open');
   setTimeout(()=>$('#cName').focus(),50);
 }
 function closeCatModal(){ $('#catModalBack').classList.remove('open'); catEdit=null; }
 $('#catCancelBtn').addEventListener('click',closeCatModal);
 $('#catModalBack').addEventListener('click',e=>{ if(e.target===$('#catModalBack'))closeCatModal(); });
+
+/* ---- delete category / subcategory ---- */
+function txCountFor(o){
+  if(o.kind==='sub'){ const fs=findSub(o.catName,o.subName); return transactions.filter(t=>t.cat===o.catName && t.sub===fs.sub.name).length; }
+  const inc=incomeCats.find(c=>c.name===o.catName);
+  const obj=inc||findExpCat(o.catName).obj;
+  let n=transactions.filter(t=>t.cat===o.catName).length;
+  if(obj && obj.subs) n+=transactions.filter(t=>t.cat===o.catName && t.sub).length; // already counted by cat; keep simple
+  return transactions.filter(t=>t.cat===o.catName).length;
+}
+$('#catDeleteBtn').addEventListener('click',()=>{
+  if(!catEdit)return;
+  const o=catEdit;
+  const n=txCountFor(o);
+  const q=$('#delConfirm').style.display==='block';
+  if(q){ $('#delConfirm').style.display='none'; return; } // toggle off
+  const isSub=o.kind==='sub';
+  $('#delQ').textContent = n>0
+    ? `По цій ${isSub?'підкатегорії':'категорії'} є ${n} ${plural(n)}. Що з ними зробити?`
+    : `Видалити ${isSub?'підкатегорію':'категорію'} «${o.subName||o.catName}»?`;
+  let opts='';
+  if(n>0){
+    opts += `<button class="danger" data-del="all">Видалити разом з операціями (${n})</button>`;
+    opts += `<button data-del="move">Перенести операції в «Різне» і видалити</button>`;
+  } else {
+    opts += `<button class="danger" data-del="all">Так, видалити</button>`;
+  }
+  opts += `<button data-del="cancel">Скасувати</button>`;
+  $('#delOpts').innerHTML=opts;
+  $('#delConfirm').style.display='block';
+});
+function plural(n){ const a=n%10,b=n%100; if(a===1&&b!==11)return 'операція'; if(a>=2&&a<=4&&(b<10||b>=20))return 'операції'; return 'операцій'; }
+
+$('#delOpts').addEventListener('click', async (e)=>{
+  const b=e.target.closest('[data-del]'); if(!b||!catEdit)return;
+  const mode=b.dataset.del;
+  if(mode==='cancel'){ $('#delConfirm').style.display='none'; return; }
+  await performDelete(catEdit, mode);
+});
+
+async function performDelete(o, mode){
+  if(DB_ON){
+    $('#delOpts').querySelectorAll('button').forEach(x=>x.disabled=true);
+    try{
+      let targetId, isSub=(o.kind==='sub');
+      if(isSub){ targetId=findSub(o.catName,o.subName).sub.id; }
+      else { const inc=incomeCats.find(c=>c.name===o.catName); targetId=(inc||findExpCat(o.catName).obj).id; }
+      // операції
+      if(mode==='move'){
+        // знайти id категорії «Різне» (expense) або лишити null
+        const misc=expenseCats.find(c=>/^різне$/i.test(c.name));
+        const miscId=misc&&misc.id;
+        await sb.from('transactions').update({category_id:miscId||null}).eq('category_id', targetId);
+      }
+      // видалити категорію (підкатегорії видаляться каскадом; операції з mode!=='move' — теж каскад on delete set null → лишаться без категорії, тож видалимо вручну при 'all')
+      if(mode==='all'){ await sb.from('transactions').delete().eq('category_id', targetId); }
+      await sb.from('categories').delete().eq('id', targetId);
+    }catch(err){ alert('Не вдалося видалити: '+(err.message||err)); return; }
+    closeCatModal();
+    await reload();
+    return;
+  }
+  // ---- демо ----
+  if(o.kind==='sub'){
+    const f=findExpCat(o.catName); const c=f.obj;
+    c.subs=(c.subs||[]).filter(s=>s.name!==o.subName);
+    if(mode==='all') transactions=transactions.filter(t=>!(t.cat===o.catName&&t.sub===o.subName));
+    else transactions.forEach(t=>{ if(t.cat===o.catName&&t.sub===o.subName){ t.sub=undefined; } });
+  } else {
+    const inc=incomeCats.find(c=>c.name===o.catName);
+    if(inc){ incomeCats.splice(incomeCats.indexOf(inc),1); }
+    else { const f=findExpCat(o.catName); if(f){ f.arr.splice(f.arr.indexOf(f.obj),1); } }
+    if(mode==='all') transactions=transactions.filter(t=>t.cat!==o.catName);
+    else transactions.forEach(t=>{ if(t.cat===o.catName){ t.cat='Різне'; t.sub=undefined; } });
+  }
+  renderAll();
+  closeCatModal();
+}
 
 $('#catSaveBtn').addEventListener('click', async ()=>{
   if(!catEdit)return;
@@ -1747,6 +1890,17 @@ function currentModalTarget(){
 }
 let modalFixed=false;
 function updateFixedFieldVisibility(){ $('#fixedField').style.display = modalType==='expense' ? 'block' : 'none'; }
+function adaptModalForType(){
+  if(modalType==='income'){
+    $('#fDateLabel').textContent='Дата оплати';
+    $('#fNoteLabel').textContent='Клієнт / що зроблено';
+    $('#fNote').placeholder='напр. K&K — лендинг';
+  } else {
+    $('#fDateLabel').textContent='Дата';
+    $('#fNoteLabel').textContent='Нотатка';
+    $('#fNote').placeholder='напр. Biedronka, пальне…';
+  }
+}
 function setSwitch(on){ modalFixed=on; $('#fixedSwitch').classList.toggle('on',on); $('#fixedSwitch').setAttribute('aria-checked',on); }
 function syncSwitchToTarget(){
   const t=currentModalTarget();
@@ -1756,10 +1910,12 @@ $('#fixedSwitch').addEventListener('click',()=>setSwitch(!modalFixed));
 $('#fCategory').addEventListener('change',()=>{ applyNewCatUI(); refreshSubField(); syncSwitchToTarget(); });
 $('#fSubcategory').addEventListener('change', syncSwitchToTarget);
 
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function openModal(){
   $('#modalBack').classList.add('open');
-  $('#fDate').value = '2026-07-31';
+  $('#fDate').value = todayStr();
   updateFixedFieldVisibility();
+  adaptModalForType();
   fillCategories();
   setTimeout(()=>$('#fAmount').focus(),50);
 }
@@ -1775,6 +1931,7 @@ $('#typeToggle').addEventListener('click',e=>{
   $$('#typeToggle button').forEach(x=>{x.classList.remove('on-exp','on-inc');});
   b.classList.add(modalType==='expense'?'on-exp':'on-inc');
   updateFixedFieldVisibility();
+  adaptModalForType();
   fillCategories();
 });
 
