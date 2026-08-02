@@ -101,13 +101,14 @@
   .year-wrap{position:relative;display:inline-flex;align-items:center}
   .year-wrap .year-cal{position:absolute;left:12px;width:15px;height:15px;color:var(--faint);pointer-events:none}
   .year-wrap .year-chev{position:absolute;right:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
-  #yearSelect{
+  #yearSelect,#monthSelect{
     appearance:none;-webkit-appearance:none;background:var(--surface);border:1px solid var(--border);
     padding:9px 32px 9px 34px;border-radius:11px;font-family:var(--display);font-size:13.5px;font-weight:600;
     color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums;
   }
-  #yearSelect:hover{border-color:var(--border-strong)}
-  #yearSelect:focus{outline:none;border-color:var(--accent)}
+  #yearSelect.no-ic{padding-left:14px}
+  #yearSelect:hover,#monthSelect:hover{border-color:var(--border-strong)}
+  #yearSelect:focus,#monthSelect:focus{outline:none;border-color:var(--accent)}
   .btn-primary{
     display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;
     padding:10px 16px;border-radius:11px;font-size:13.5px;font-weight:600;transition:transform .1s,background .15s;
@@ -501,7 +502,11 @@
       <div class="topbar-actions">
         <div class="year-wrap">
           <svg class="year-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          <select id="yearSelect">
+          <select id="monthSelect"></select>
+          <svg class="year-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="year-wrap">
+          <select id="yearSelect" class="no-ic">
             <option value="2026">2026</option>
             <option value="2025">2025</option>
             <option value="2024">2024</option>
@@ -834,8 +839,8 @@
    Встав сюди свої значення з Supabase → Settings → API.
    Поки порожні — застосунок працює як демо (нічого не пише в базу).
    ============================================================ */
-const SUPABASE_URL      = 'https://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
-const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9'; 
+const SUPABASE_URL      = '';   // ← Project URL
+const SUPABASE_ANON_KEY = '';   // ← anon public ключ
 
 const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -932,15 +937,21 @@ function yearTotals(y){
 
 /* ============ STAT CARDS ============ */
 function renderStats(){
-  const yData = yearly[PERIOD.year] || [];
-  const cur = yData[PERIOD.month] || [0,0];
-  const prev = PERIOD.month>0 ? (yData[PERIOD.month-1]||[0,0]) : [0,0];
-  const inc=cur[0], exp=cur[1], bal=inc-exp;
-  const incD = prev[0] ? ((inc-prev[0])/prev[0]*100) : null;
-  const expD = prev[1] ? ((exp-prev[1])/prev[1]*100) : null;
-  const prevName = PERIOD.month>0 ? MONTHS_FULL[PERIOD.month-1] : '';
+  const inc = incomeCats.reduce((s,c)=>s+(c.value||0),0);
+  const exp = [...expenseCats,...expenseCatsExtra].reduce((s,c)=>s+catValueOf(c),0);
+  const bal = inc-exp;
+  // порівняння з попереднім місяцем (лише коли обрано конкретний місяць у поточному році)
+  let incD=null, expD=null, prevName='';
+  if(PERIOD.month>0){
+    const yData=yearly[PERIOD.year]||[];
+    const prev=yData[PERIOD.month-1]||[0,0];
+    incD = prev[0] ? ((inc-prev[0])/prev[0]*100) : null;
+    expD = prev[1] ? ((exp-prev[1])/prev[1]*100) : null;
+    prevName = MONTHS_FULL[PERIOD.month-1];
+  }
+  const balName = PERIOD.month===-1 ? 'Баланс за рік' : 'Баланс місяця';
   const cards = [
-    {name:'Баланс місяця', ic:'balance', val:bal, delta:null, iconPath:'<path d="M3 6h18v12H3z"/><path d="M3 10h18"/>'},
+    {name:balName, ic:'balance', val:bal, delta:null, iconPath:'<path d="M3 6h18v12H3z"/><path d="M3 10h18"/>'},
     {name:'Доходи', ic:'income', val:inc, delta:incD, iconPath:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
     {name:'Витрати', ic:'expense', val:exp, delta:expD, invert:true, iconPath:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
     {name:'Заощаджено', ic:'save', val:bal, delta:null, iconPath:'<path d="M20 12V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/><circle cx="16" cy="12" r="1.5"/>'},
@@ -1194,11 +1205,12 @@ function refreshExpStats(){
   const fixedPlan = all.reduce((s,c)=>s+planFixedOf(c),0);
   const fixedCount = all.filter(isFixedCat).length;
   const variableActual = all.filter(c=>!isFixedCat(c)).reduce((s,c)=>s+catValueOf(c),0);
-  if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month][1] = Math.round(total);
+  if(yearly[PERIOD.year] && PERIOD.month>=0) yearly[PERIOD.year][PERIOD.month][1] = Math.round(total);
+  const per = PERIOD.month===-1 ? String(PERIOD.year) : PERIOD.label.split(' ')[0];
   miniStats('expStats',[
-    {name:'Витрати за '+PERIOD.label.split(' ')[0], val:total, sub:PERIOD.label, ic:'ic-expense', icon:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
-    {name:'Фіксовані / міс', val:fixedPlan, sub:fixedCount+' категорій · план', ic:'ic-expense', icon:REPEAT_PATHS},
-    {name:'Змінні', val:variableActual, sub:'факт цього місяця', ic:'ic-expense', icon:'<path d="M3 6h18M3 12h18M3 18h18"/>'},
+    {name:'Витрати за '+per, val:total, sub:PERIOD.label, ic:'ic-expense', icon:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
+    {name:'Фіксовані', val:fixedPlan, sub:fixedCount+' категорій · план', ic:'ic-expense', icon:REPEAT_PATHS},
+    {name:'Змінні', val:variableActual, sub:'факт за період', ic:'ic-expense', icon:'<path d="M3 6h18M3 12h18M3 18h18"/>'},
   ]);
 }
 
@@ -1594,6 +1606,16 @@ function setupYearOptions(){
   sel.innerHTML=yrs.map(y=>`<option value="${y}">${y}</option>`).join('');
   sel.value=String(PERIOD.year);
 }
+function setupMonthOptions(){
+  const sel=$('#monthSelect'); if(!sel)return;
+  let html='<option value="-1">Весь рік</option>';
+  MONTHS_FULL.forEach((m,i)=>{ html+=`<option value="${i}">${capitalize(m)}</option>`; });
+  sel.innerHTML=html;
+  sel.value=String(PERIOD.month);
+}
+function setPeriodLabel(){
+  PERIOD.label = PERIOD.month===-1 ? String(PERIOD.year) : (MONTHS_FULL[PERIOD.month]+' '+PERIOD.year);
+}
 async function loadFromDB(){
   const [{data:cats,error:e1},{data:txs,error:e2}]=await Promise.all([
     sb.from('categories').select('*').order('sort'),
@@ -1602,37 +1624,52 @@ async function loadFromDB(){
   if(e1) throw e1; if(e2) throw e2;
   buildFromDB(cats||[], txs||[]);
 }
-function buildFromDB(cats, txs){
+let _rawCats=[], _rawTxs=[];
+function buildFromDB(cats, txs){ _rawCats=cats||[]; _rawTxs=txs||[]; applyPeriod(); }
+
+function inPeriod(t){
+  const d=new Date(t.occurred_at);
+  if(d.getFullYear()!==PERIOD.year) return false;
+  if(PERIOD.month===-1) return true;       // весь рік
+  return d.getMonth()===PERIOD.month;
+}
+function applyPeriod(){
+  const cats=_rawCats, txs=_rawTxs;
   const byId={}; cats.forEach(c=>byId[c.id]=c);
   const childrenOf=pid=>cats.filter(c=>c.parent_id===pid).sort((a,b)=>(a.sort||0)-(b.sort||0));
-  const inMonth=t=>{ const d=new Date(t.occurred_at); return d.getFullYear()===PERIOD.year && d.getMonth()===PERIOD.month; };
+  const wholeYear = PERIOD.month===-1;
+
   const spend={}, incSpend={};
-  txs.forEach(t=>{ if(!inMonth(t))return;
+  txs.forEach(t=>{ if(!inPeriod(t))return;
     if(t.type==='expense') spend[t.category_id]=(spend[t.category_id]||0)+Number(t.amount);
     else incSpend[t.category_id]=(incSpend[t.category_id]||0)+Number(t.amount);
   });
+  // для «весь рік» фіксовані показуємо як план × кількість місяців з даними (спрощено: × поточний місяць+1)
+  const monthsCount = wholeYear ? Math.min(12, (new Date().getFullYear()===PERIOD.year ? new Date().getMonth()+1 : 12)) : 1;
 
   const exp=[], inc=[];
   cats.filter(c=>!c.parent_id).forEach(p=>{
     if(p.type==='income'){ inc.push({id:p.id, name:p.name, icon:p.icon, color:p.color, value:incSpend[p.id]||0}); return; }
     const kids=childrenOf(p.id);
+    const fx=v=> wholeYear ? v*monthsCount : v;   // фіксований план за весь рік
     if(kids.length){
       const subs=kids.map(k=>({ id:k.id, name:k.name, icon:k.icon, fixed:!!k.is_fixed,
         plan:Number(k.monthly_amount)||0,
-        value: k.is_fixed ? (Number(k.monthly_amount)||0) : (spend[k.id]||0) }));
+        value: k.is_fixed ? fx(Number(k.monthly_amount)||0) : (spend[k.id]||0) }));
       exp.push({id:p.id, name:p.name, icon:p.icon, color:p.color, subs});
     } else {
       exp.push({ id:p.id, name:p.name, icon:p.icon, color:p.color, fixed:!!p.is_fixed,
         plan:Number(p.monthly_amount)||0,
-        value: p.is_fixed ? (Number(p.monthly_amount)||0) : (spend[p.id]||0) });
+        value: p.is_fixed ? fx(Number(p.monthly_amount)||0) : (spend[p.id]||0) });
     }
   });
   expenseCats.length=0; exp.forEach(x=>expenseCats.push(x));
-  expenseCatsExtra.length=0;                 // у режимі бази все живе в expenseCats
-  incomeCats.length=0; inc.forEach(x=>incomeCats.push(x));
+  expenseCatsExtra.length=0;
+  incomeCats.length=0; inc.forEach(x=>inc && incomeCats.push(x));
 
+  // операції — лише за обраний період, для таблиць
   transactions.length=0;
-  txs.forEach(t=>{
+  txs.filter(inPeriod).forEach(t=>{
     const c=byId[t.category_id]; if(!c)return;
     let parent=c, subName=null;
     if(c.parent_id){ parent=byId[c.parent_id]||c; subName=c.name; }
@@ -1644,14 +1681,10 @@ function buildFromDB(cats, txs){
       type:t.type, occurred_at:t.occurred_at });
   });
 
+  // річні агрегати для графіків — з усіх операцій (не залежить від місяця)
   [PERIOD.year, PERIOD.year-1, PERIOD.year-2].forEach(y=>{ yearly[y]=Array.from({length:12},()=>[0,0]); });
   txs.forEach(t=>{ const d=new Date(t.occurred_at), y=d.getFullYear(), m=d.getMonth();
     if(yearly[y]){ if(t.type==='income') yearly[y][m][0]+=Number(t.amount); else yearly[y][m][1]+=Number(t.amount); } });
-  // поточний місяць у графіку = план фіксованих + факт змінних (як у картках)
-  const expNow=[...expenseCats].reduce((s,c)=>s+catValueOf(c),0);
-  const incNow=incomeCats.reduce((s,c)=>s+(c.value||0),0);
-  if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month]=[incNow, expNow];
-
   rebuildCatColors();
 }
 async function reload(){ try{ await loadFromDB(); }catch(err){ console.error(err); } renderAll(); }
@@ -1680,6 +1713,7 @@ async function loadUserData(){
   PERIOD={year:now.getFullYear(), month:now.getMonth(), label:MONTHS_FULL[now.getMonth()]+' '+now.getFullYear()};
   currentYear=PERIOD.year;
   setupYearOptions();
+  setupMonthOptions();
   try{ await loadFromDB(); _loadedOnce=true; }
   catch(err){ console.error('Supabase load failed:',err); }
   renderAll();
@@ -1808,6 +1842,7 @@ async function boot(){
   } else {
     // демо-режим: без бази, показуємо все одразу
     $('#demoUser').style.display='flex';
+    setupMonthOptions();
     renderAll();
   }
 }
@@ -1841,13 +1876,26 @@ $('#flowSeg').addEventListener('click',e=>{
   renderOverviewFlow();
 });
 
-/* ================= YEAR SELECT ================= */
+/* ================= PERIOD SELECT (місяць + рік) ================= */
+function onPeriodChange(){
+  if(DB_ON){
+    setPeriodLabel();
+    applyPeriod();     // перерахувати категорії/операції під обраний період зі збережених даних
+    renderAll();
+  } else {
+    // демо: рік впливає лише на графіки
+    const fy=$('#flowYear'); if(fy) fy.textContent=currentYear;
+    renderOverviewFlow();
+    renderExpTrend();
+  }
+}
 $('#yearSelect').addEventListener('change',(e)=>{
-  currentYear = parseInt(e.target.value,10);
-  const fy=$('#flowYear'); if(fy) fy.textContent=currentYear;
-  const yr=yearly[currentYear]||[];
-  renderOverviewFlow();
-  renderExpTrend();
+  PERIOD.year = currentYear = parseInt(e.target.value,10);
+  onPeriodChange();
+});
+$('#monthSelect').addEventListener('change',(e)=>{
+  PERIOD.month = parseInt(e.target.value,10);
+  onPeriodChange();
 });
 
 /* ================= MOBILE SIDEBAR ================= */
@@ -1993,7 +2041,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
         if(modalFixed && t.cat.arr===expenseCatsExtra){ expenseCatsExtra.splice(expenseCatsExtra.indexOf(c),1); expenseCats.push(c); } }
     }
   } else {
-    if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month][0]+=amt;
+    if(yearly[PERIOD.year] && PERIOD.month>=0) yearly[PERIOD.year][PERIOD.month][0]+=amt;
     const ic=incomeCats.find(c=>c.name===catName); if(ic)ic.value+=amt;
   }
   transactions.unshift({d:'31 лип', cat:catName, sub:subName||undefined, color:catColors[catName]||'#7E7A6B', note, amt:signed, type:modalType});
