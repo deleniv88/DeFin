@@ -834,8 +834,8 @@
    Встав сюди свої значення з Supabase → Settings → API.
    Поки порожні — застосунок працює як демо (нічого не пише в базу).
    ============================================================ */
-const SUPABASE_URL      = '';   // ← Project URL
-const SUPABASE_ANON_KEY = '';   // ← anon public ключ
+const SUPABASE_URL      = 'https://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
+const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9'; 
 
 const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
