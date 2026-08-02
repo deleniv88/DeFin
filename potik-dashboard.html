@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Потік — особисті фінанси</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#EFF1EC;
+    --bg-2:#E7ECEA;
+    --surface:#FFFFFF;
+    --surface-2:#FAFAF7;
+    --glass:rgba(255,255,255,.62);
+    --glass-brd:rgba(255,255,255,.7);
+    --border:#E5E6E0;
+    --border-strong:#D8D9D2;
+    --ink:#1B1C19;
+    --muted:#6C6E67;
+    --faint:#9A9C93;
+    --income:#2F7A55;
+    --income-2:#49A574;
+    --income-soft:#E3F0E8;
+    --expense:#B8503A;
+    --expense-2:#D9795F;
+    --expense-soft:#F6E8E3;
+    --accent:#2F7A55;
+    --grad-income:linear-gradient(180deg,#49A574 0%,#2F7A55 100%);
+    --grad-expense:linear-gradient(180deg,#D9795F 0%,#B8503A 100%);
+    --grad-brand:linear-gradient(135deg,#2F7A55 0%,#1F6E7A 100%);
+    --shadow:0 1px 2px rgba(27,28,25,.04), 0 8px 24px -12px rgba(27,28,25,.12);
+    --shadow-lg:0 2px 4px rgba(27,28,25,.05), 0 24px 48px -20px rgba(27,28,25,.22);
+    --radius:18px;
+    --radius-sm:12px;
+    --sans:'Inter',system-ui,-apple-system,sans-serif;
+    --display:'Space Grotesk',var(--sans);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--sans);
+    background:
+      radial-gradient(900px 500px at 100% -5%, rgba(73,165,116,.14), transparent 60%),
+      radial-gradient(760px 500px at -5% 8%, rgba(31,110,122,.10), transparent 55%),
+      linear-gradient(180deg,var(--bg) 0%,var(--bg-2) 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    font-feature-settings:"cv05","cv08";
+  }
+  .num{font-family:var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+  /* ---------- shell ---------- */
+  .shell{display:grid;grid-template-columns:244px 1fr;min-height:100vh}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(20px) saturate(150%);
+    backdrop-filter:blur(20px) saturate(150%);
+    border-right:1px solid var(--glass-brd);
+    padding:22px 16px;display:flex;flex-direction:column;gap:6px;
+    position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 18px}
+  .brand-mark{width:34px;height:34px;border-radius:10px;background:var(--grad-brand);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px -6px rgba(31,110,122,.6)}
+  .brand-mark svg{width:19px;height:19px}
+  .brand-name{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-.02em;line-height:1}
+  .brand-sub{font-size:11px;color:var(--faint);letter-spacing:.02em;margin-top:2px}
+  .nav-label{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:14px 10px 6px}
+  .nav-item{
+    display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+    padding:9px 10px;border-radius:10px;color:var(--muted);font-size:14px;font-weight:500;
+    transition:background .15s,color .15s;
+  }
+  .nav-item svg{width:18px;height:18px;flex:none;stroke-width:1.7}
+  .nav-item:hover{background:var(--surface-2);color:var(--ink)}
+  .nav-item.active{background:var(--income-soft);color:var(--income);font-weight:600}
+  .nav-item.active svg{stroke-width:2}
+  .sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--border)}
+
+  /* ---------- main ---------- */
+  .main{padding:24px 30px 44px;max-width:1240px}
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+  .hello h1{font-family:var(--display);font-size:25px;font-weight:600;letter-spacing:-.025em}
+  .hello p{color:var(--muted);font-size:14px;margin-top:3px}
+  .topbar-actions{display:flex;align-items:center;gap:10px}
+  .menu-btn{display:none}
+
+  .select{
+    display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);
+    padding:9px 13px;border-radius:11px;font-size:13.5px;font-weight:500;color:var(--ink);
+  }
+  .select svg{width:15px;height:15px;color:var(--faint)}
+  .year-wrap{position:relative;display:inline-flex;align-items:center}
+  .year-wrap .year-cal{position:absolute;left:12px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+  .year-wrap .year-chev{position:absolute;right:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+  #yearSelect{
+    appearance:none;-webkit-appearance:none;background:var(--surface);border:1px solid var(--border);
+    padding:9px 32px 9px 34px;border-radius:11px;font-family:var(--display);font-size:13.5px;font-weight:600;
+    color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums;
+  }
+  #yearSelect:hover{border-color:var(--border-strong)}
+  #yearSelect:focus{outline:none;border-color:var(--accent)}
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;
+    padding:10px 16px;border-radius:11px;font-size:13.5px;font-weight:600;transition:transform .1s,background .15s;
+  }
+  .btn-primary:hover{background:#2c2d29}
+  .btn-primary:active{transform:scale(.98)}
+  .btn-primary svg{width:16px;height:16px;stroke-width:2.2}
+
+  /* ---------- pages ---------- */
+  .page{display:none;animation:fade .3s ease}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ---------- stat cards ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+  .stat{position:relative;overflow:hidden;background:var(--glass);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);border:1px solid var(--glass-brd);border-radius:var(--radius);padding:18px 18px 16px;box-shadow:var(--shadow)}
+  .stat::before{content:"";position:absolute;top:-40%;right:-30%;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(73,165,116,.10),transparent 70%);pointer-events:none}
+  .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .stat-name{font-size:12.5px;color:var(--muted);font-weight:500}
+  .stat-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;color:#fff;box-shadow:0 6px 14px -6px rgba(27,28,25,.4)}
+  .stat-ic svg{width:16px;height:16px;stroke-width:2}
+  .ic-balance{background:var(--grad-brand)}
+  .ic-income{background:var(--grad-income)}
+  .ic-expense{background:var(--grad-expense)}
+  .ic-save{background:linear-gradient(180deg,#5E8CA6,#4E7488)}
+  .stat-val{font-size:26px;font-weight:600}
+  .stat-val .cur{font-size:15px;color:var(--faint);font-weight:500;margin-left:3px}
+  .stat-delta{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;margin-top:9px;font-family:var(--sans)}
+  .stat-delta .base{color:var(--faint);font-weight:450;font-family:var(--sans)}
+  .up{color:var(--income)}.down{color:var(--expense)}
+  .stat-delta svg{width:13px;height:13px;stroke-width:2.4}
+
+  /* ---------- grid + cards ---------- */
+  .grid-2{display:grid;grid-template-columns:1.9fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:var(--glass);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);border:1px solid var(--glass-brd);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:12px;flex-wrap:wrap}
+  .card-title{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .card-sub{font-size:12.5px;color:var(--muted);margin-top:1px}
+
+  /* segmented */
+  .seg{display:inline-flex;background:rgba(255,255,255,.5);border:1px solid var(--glass-brd);border-radius:11px;padding:3px}
+  .seg button{padding:6px 13px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--muted);transition:.15s}
+  .seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 2px 6px -2px rgba(0,0,0,.12)}
+
+  /* legend */
+  .legend{display:flex;gap:16px;align-items:center;font-size:12.5px;color:var(--muted);font-weight:500}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot-inc{width:10px;height:10px;border-radius:50%;background:var(--grad-income)}
+  .dot-exp{width:10px;height:10px;border-radius:50%;background:var(--grad-expense)}
+
+  /* overview right column + month structure */
+  .right-col{display:flex;flex-direction:column;gap:16px}
+  .flow-card{display:flex;flex-direction:column}
+  .split-card .card-title{font-family:var(--display);font-size:16px;font-weight:600}
+  .split-bar{display:flex;height:34px;border-radius:11px;overflow:hidden;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border)}
+  .split-bar .seg-fx{background:var(--grad-brand)}
+  .split-bar .seg-var{background:var(--grad-expense)}
+  .split-bar>div{display:grid;place-items:center;color:#fff;font-family:var(--display);font-size:12px;font-weight:600;min-width:0;transition:flex-basis .4s ease}
+  .split-legend{display:flex;flex-direction:column;gap:10px;margin-top:15px}
+  .split-legend .row{display:flex;align-items:center;gap:9px;font-size:13px}
+  .split-legend .row .k{flex:1;color:var(--muted)}
+  .split-legend .row .v{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600}
+  .split-legend .sw2{width:11px;height:11px;border-radius:4px;flex:none}
+
+  /* flow chart */
+  .flow-wrap{margin-top:14px}
+  .flow-svg{width:100%;height:auto;display:block;overflow:visible}
+  .bar{transition:opacity .2s}
+  .bar-hit:hover .bar{opacity:.78}
+  .axis-line{stroke:var(--border-strong);stroke-width:1}
+  .mlabel{font-size:11px;fill:var(--faint);font-family:var(--sans);text-anchor:middle}
+
+  /* donut */
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;margin-top:8px}
+  .donut{position:relative;width:180px;height:180px}
+  .donut svg{transform:rotate(-90deg)}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .donut-center .lbl{font-size:11px;color:var(--muted)}
+  .donut-center .amt{font-family:var(--display);font-size:22px;font-weight:600;margin-top:1px}
+  .cat-legend{width:100%;margin-top:16px;display:flex;flex-direction:column;gap:9px}
+  .cat-row{display:flex;align-items:center;gap:9px;font-size:13px}
+  .cat-row .nm{flex:1;color:var(--ink)}
+  .cat-row .vl{font-family:var(--display);font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px}
+
+  /* transactions */
+  .tx-table{width:100%;border-collapse:collapse}
+  .tx-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:0 8px 12px;border-bottom:1px solid var(--border)}
+  .tx-table td{padding:13px 8px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:middle}
+  .tx-table tr:last-child td{border-bottom:none}
+  .tx-table tbody tr{transition:background .12s}
+  .tx-table tbody tr:hover{background:var(--surface-2)}
+  .tx-cat{display:inline-flex;align-items:center;gap:9px;font-weight:500}
+  .tx-note{color:var(--muted)}
+  .tx-date{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tx-amt{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .tx-amt.pos{color:var(--income)}
+  .tx-amt.neg{color:var(--ink)}
+  th.right,td.right{text-align:right}
+
+  /* category bars (expenses page) */
+  .catbar-list{display:flex;flex-direction:column;gap:15px;margin-top:6px}
+  .catbar{display:grid;grid-template-columns:190px 1fr auto 30px;align-items:center;gap:14px}
+  .catbar .nm{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:9px;min-width:0}
+  .catbar .nm .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .catbar .sw{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:15px;line-height:1}
+  .catbar .track{height:9px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+  .catbar .fill{height:100%;border-radius:5px}
+  .catbar .vl{font-family:var(--display);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;min-width:78px;text-align:right}
+  .catbar .bar-edit{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--faint);border:1px solid var(--border);background:var(--surface);transition:.15s}
+  .catbar .bar-edit:hover{color:var(--ink);border-color:var(--border-strong)}
+  .catbar .bar-edit svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* categories page */
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:4px}
+  .cat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:15px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+  .cat-swatch{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:18px;line-height:1}
+  .cat-card .info{flex:1;min-width:0}
+  .cat-card .info .t{font-weight:600;font-size:14px}
+  .cat-card .info .s{font-size:11.5px;color:var(--faint);margin-top:1px}
+  .badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.03em;color:var(--income);background:var(--income-soft);padding:2px 7px;border-radius:20px;margin-top:5px}
+  .t-row{display:flex;align-items:center;gap:5px;min-width:0}
+  .t-row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .edit-btn{width:22px;height:22px;border-radius:6px;display:inline-grid;place-items:center;color:var(--faint);flex:none;transition:.15s}
+  .edit-btn:hover{background:var(--surface-2);color:var(--ink)}
+  .edit-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .fix-toggle{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--faint);border:1px solid var(--border);flex:none;background:var(--surface);transition:.15s}
+  .fix-toggle svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .fix-toggle:hover{color:var(--ink)}
+  .fix-toggle.on{background:var(--income-soft);border-color:transparent;color:var(--income)}
+  .mo-amt{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);cursor:pointer;border-bottom:1px dashed var(--border-strong)}
+  .mo-amt:hover{color:var(--income);border-color:var(--income)}
+  .mo-lbl{color:var(--faint);font-size:11px;margin-left:4px}
+  .rename-input,.amount-edit{font-family:inherit;font-size:14px;font-weight:600;border:1px solid var(--accent);border-radius:6px;padding:2px 6px;width:100%;max-width:135px;outline:none;background:var(--surface)}
+  .amount-edit{max-width:92px;font-family:var(--display)}
+  .cat-section-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:8px 0 13px}
+  .cat-section-label>svg{width:14px;height:14px;stroke:var(--income);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .cat-section-label .sum{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--income);background:var(--income-soft);padding:2px 10px;border-radius:20px;font-size:11px}
+  .fix-ic{width:12px;height:12px;stroke:var(--faint);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-left:2px}
+  .switch-row{display:flex;align-items:center;justify-content:space-between}
+  .switch-label{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .switch{width:42px;height:24px;border-radius:20px;background:var(--border-strong);position:relative;transition:.18s;flex:none}
+  .switch.on{background:var(--income)}
+  .switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .switch.on .knob{left:20px}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.4}
+  .cat-grid{align-items:start}
+  .cat-card.has-subs{flex-direction:column;align-items:stretch;grid-column:1/-1}
+  .cat-head{display:flex;align-items:center;gap:12px;width:100%}
+  .cat-head .total{margin-left:auto;font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;white-space:nowrap}
+  .cat-head .fixchip{font-size:10.5px;font-weight:600;color:var(--income);background:var(--income-soft);padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .subs{margin-top:13px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:9px}
+  .sub-row{display:flex;align-items:center;gap:9px;padding-left:2px}
+  .sub-row .sub-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex:none;margin:0 4px}
+  .sub-row .sub-name{font-size:13.5px;font-weight:500}
+  .sub-row .sub-spacer{flex:1}
+  .sub-var{font-size:12.5px;color:var(--muted)}
+  .fix-toggle.sm{width:26px;height:26px;border-radius:7px}
+  .fix-toggle.sm svg{width:13px;height:13px}
+  .add-sub-btn{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);padding:5px 9px;border-radius:8px;border:1px dashed var(--border-strong);transition:.15s;margin-top:2px}
+  .add-sub-btn:hover{color:var(--income);border-color:var(--income);background:var(--income-soft)}
+  .add-sub-btn.flat{margin-top:8px;padding:3px 0;border:none}
+  .add-sub-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+  .sub-emoji{font-size:15px;line-height:1;margin-right:2px}
+  .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .emoji-grid button{aspect-ratio:1;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);font-size:18px;display:grid;place-items:center;transition:.12s;line-height:1}
+  .emoji-grid button:hover{background:var(--surface);border-color:var(--border-strong)}
+  .emoji-grid button.sel{border-color:var(--accent);background:var(--income-soft);box-shadow:0 0 0 1px var(--accent)}
+  .edit-btn.lg{width:32px;height:32px;border:1px solid var(--border);border-radius:9px;background:var(--surface);flex:none}
+  .edit-btn.lg:hover{border-color:var(--border-strong);background:var(--surface-2)}
+  .edit-btn.lg svg{width:15px;height:15px}
+  .cat-head .t{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub-amt{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;color:var(--ink)}
+
+  /* analytics year compare */
+  .year-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+  .year-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .year-card.this{border-color:var(--income);box-shadow:0 0 0 1px var(--income), var(--shadow)}
+  .year-card .yr{font-family:var(--display);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+  .year-card .yr .tag{font-size:10px;font-weight:600;color:var(--income);background:var(--income-soft);padding:2px 8px;border-radius:20px}
+  .year-line{display:flex;align-items:center;justify-content:space-between;margin-top:13px;font-size:13px}
+  .year-line .k{color:var(--muted)}
+  .year-line .v{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600}
+  .year-net{margin-top:13px;padding-top:13px;border-top:1px solid var(--border)}
+
+  .placeholder{color:var(--muted);font-size:14px;padding:40px 0;text-align:center}
+
+  /* ---------- modal ---------- */
+  .modal-back{position:fixed;inset:0;background:rgba(27,28,25,.34);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-back.open{display:flex;animation:fade .18s ease}
+  .modal{background:var(--surface);border-radius:20px;width:100%;max-width:420px;padding:24px;box-shadow:var(--shadow-lg)}
+  .modal h2{font-family:var(--display);font-size:19px;font-weight:600;margin-bottom:4px}
+  .modal .msub{font-size:13px;color:var(--muted);margin-bottom:20px}
+  .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .type-toggle button{padding:11px;border-radius:11px;border:1.5px solid var(--border);font-weight:600;font-size:14px;color:var(--muted);transition:.15s}
+  .type-toggle button.on-exp{border-color:var(--expense);background:var(--expense-soft);color:var(--expense)}
+  .type-toggle button.on-inc{border-color:var(--income);background:var(--income-soft);color:var(--income)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--surface-2)}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+  .amount-in{position:relative}
+  .amount-in .cur{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:14px;pointer-events:none}
+  .amount-in input{font-family:var(--display);font-variant-numeric:tabular-nums;padding-right:40px}
+  .modal-actions{display:flex;gap:10px;margin-top:22px}
+  .modal-actions button{flex:1;padding:12px;border-radius:11px;font-weight:600;font-size:14px}
+  .btn-ghost{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{color:var(--ink)}
+  .btn-save{background:var(--ink);color:#fff}
+  .btn-save:hover{background:#2c2d29}
+
+  /* ---------- user panel ---------- */
+  .user-panel{display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;border-radius:14px;background:rgba(255,255,255,.5);border:1px solid var(--glass-brd)}
+  .user-photo{width:38px;height:38px;border-radius:11px;flex:none;background:var(--grad-brand);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:16px;background-size:cover;background-position:center}
+  .user-meta{flex:1;min-width:0}
+  .user-name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .user-email{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .user-ic{width:28px;height:28px;border-radius:8px;flex:none;display:grid;place-items:center;color:var(--muted);transition:.15s}
+  .user-ic:hover{background:var(--surface);color:var(--ink)}
+  .user-ic svg{width:16px;height:16px;stroke-width:1.9}
+
+  /* ---------- auth gate ---------- */
+  .auth-gate{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;
+    background:radial-gradient(700px 420px at 80% 0%,rgba(73,165,116,.22),transparent 60%),linear-gradient(180deg,#EFF1EC,#E1E8E5)}
+  .auth-card{width:100%;max-width:400px;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(150%);backdrop-filter:blur(24px) saturate(150%);border:1px solid var(--glass-brd);border-radius:22px;padding:28px;box-shadow:var(--shadow-lg)}
+  .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:rgba(255,255,255,.5);border:1px solid var(--glass-brd);border-radius:12px;padding:4px;margin-bottom:18px}
+  .auth-tabs button{padding:9px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted);transition:.15s}
+  .auth-tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 2px 6px -2px rgba(0,0,0,.12)}
+  .auth-submit{width:100%;padding:13px;border-radius:12px;font-size:15px;margin-top:6px}
+  .auth-msg{font-size:13px;margin-top:12px;min-height:18px;text-align:center}
+  .auth-msg.err{color:var(--expense)}
+  .auth-msg.ok{color:var(--income)}
+  .auth-links{display:flex;justify-content:space-between;gap:10px;margin-top:14px}
+  .auth-links button{font-size:12.5px;color:var(--muted);font-weight:500}
+  .auth-links button:hover{color:var(--ink);text-decoration:underline}
+  .auth-note{font-size:11.5px;color:var(--faint);text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);line-height:1.4}
+
+  /* ---------- responsive ---------- */
+  @media(max-width:1000px){
+    .grid-2{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .year-grid{grid-template-columns:1fr}
+  }
+  @media(max-width:760px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);transition:transform .25s;width:264px;box-shadow:var(--shadow-lg)}
+    .sidebar.open{transform:none}
+    .main{padding:18px 16px 40px}
+    .menu-btn{display:inline-grid;place-items:center;width:40px;height:40px;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+    .menu-btn svg{width:20px;height:20px}
+    .scrim{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:39;display:none}
+    .scrim.show{display:block}
+    .catbar{grid-template-columns:110px 1fr auto;gap:10px}
+    .catbar .nm{font-size:12.5px}
+  }
+  @media(max-width:440px){
+    .stats{grid-template-columns:1fr}
+    .hello h1{font-size:22px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="user-panel" id="userPanel" style="display:none">
+      <div class="user-photo" id="userPhoto">А</div>
+      <div class="user-meta">
+        <div class="user-name" id="userName">—</div>
+        <div class="user-email" id="userEmail">—</div>
+      </div>
+      <button class="user-ic" id="settingsBtn" title="Налаштування">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15H3.5a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 5.4 9.6l-.11-.29a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 11 6.6V6.5a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 18 8.6l.29-.11a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 13"/></svg>
+      </button>
+      <button class="user-ic" id="logoutBtn" title="Вийти">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 15c3-6 5 6 8 0s5-6 8 0"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Потік</div>
+        <div class="brand-sub">особисті фінанси</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Огляд</div>
+    <button class="nav-item active" data-page="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Огляд
+    </button>
+    <button class="nav-item" data-page="income">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>
+      Доходи
+    </button>
+    <button class="nav-item" data-page="expenses">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg>
+      Витрати
+    </button>
+    <button class="nav-item" data-page="analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+      Аналітика
+    </button>
+    <button class="nav-item" data-page="categories">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+      Категорії
+    </button>
+
+    <div class="sidebar-foot">
+      <button class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15H3.5a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 5.4 9.6l-.11-.29a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 11 6.6V6.5a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 18 8.6l.29-.11a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 13"/></svg>
+        Налаштування
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-btn" id="menuBtn" aria-label="Меню">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="hello">
+          <h1 id="pageTitle">Огляд</h1>
+          <p id="pageSub">Привіт, Андрію — ось твої фінанси за липень 2026</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="year-wrap">
+          <svg class="year-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <select id="yearSelect">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <svg class="year-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <button class="btn-primary" id="addBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Додати
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="page active" data-page="overview">
+      <div class="stats" id="statsRow"></div>
+
+      <div class="grid-2">
+        <div class="card flow-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Грошовий потік</div>
+              <div class="card-sub">Доходи над віссю, витрати під нею · <span id="flowYear">2026</span></div>
+            </div>
+            <div class="seg" id="flowSeg">
+              <button class="on" data-f="all">Все</button>
+              <button data-f="income">Доходи</button>
+              <button data-f="expense">Витрати</button>
+            </div>
+          </div>
+          <div class="legend" style="margin-top:10px">
+            <span><i class="dot dot-inc"></i>Доходи</span>
+            <span><i class="dot dot-exp"></i>Витрати</span>
+          </div>
+          <div class="flow-wrap"><svg class="flow-svg" id="flowSvg" viewBox="0 0 720 320" preserveAspectRatio="xMidYMid meet"></svg></div>
+        </div>
+
+        <div class="right-col">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Витрати за категоріями</div>
+                <div class="card-sub" id="donutPeriod">Липень 2026</div>
+              </div>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut">
+                <svg width="196" height="196" viewBox="0 0 196 196" id="donutSvg"></svg>
+                <div class="donut-center">
+                  <div class="lbl">Разом</div>
+                  <div class="amt num" id="donutTotal">—</div>
+                </div>
+              </div>
+              <div class="cat-legend" id="donutLegend"></div>
+            </div>
+          </div>
+          <div class="card split-card">
+            <div class="card-title" style="margin-bottom:14px">Структура місяця</div>
+            <div class="split-bar" id="splitBar"></div>
+            <div class="split-legend" id="splitLegend"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Останні операції</div>
+        </div>
+        <table class="tx-table">
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ INCOME ============ -->
+    <section class="page" data-page="income">
+      <div class="stats" style="grid-template-columns:repeat(3,1fr)" id="incStats"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><div class="card-title">Джерела доходу</div><div class="card-sub" id="incPeriod" style="margin-left:auto">Липень 2026</div></div>
+          <div class="catbar-list" id="incBars"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Структура</div></div>
+          <div class="donut-wrap">
+            <div class="donut">
+              <svg width="180" height="180" viewBox="0 0 180 180" id="incDonut"></svg>
+              <div class="donut-center"><div class="lbl">Дохід</div><div class="amt num" id="incDonutTotal">—</div></div>
+            </div>
+            <div class="cat-legend" id="incDonutLegend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Доходи — операції</div></div>
+        <table class="tx-table">
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+          <tbody id="incTxBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ EXPENSES ============ -->
+    <section class="page" data-page="expenses">
+      <div class="stats" style="grid-template-columns:repeat(3,1fr)" id="expStats"></div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-title">Витрати по місяцях</div><div class="card-sub">Динаміка за <span id="expTrendYear">2026</span></div></div>
+          </div>
+          <div class="flow-wrap"><svg class="flow-svg" id="expTrendSvg" viewBox="0 0 720 280" preserveAspectRatio="xMidYMid meet"></svg></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Фіксовані vs змінні</div><div class="card-sub" id="expSplitPeriod">Липень 2026</div></div></div>
+          <div class="donut-wrap">
+            <div class="donut">
+              <svg width="196" height="196" viewBox="0 0 196 196" id="expFixDonut"></svg>
+              <div class="donut-center"><div class="lbl">Витрати</div><div class="amt num" id="expFixTotal">—</div></div>
+            </div>
+            <div class="cat-legend" id="expFixLegend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><div class="card-title">Витрати за категоріями</div><div class="card-sub" id="expPeriod" style="margin-left:auto">Липень 2026</div></div>
+        <div class="catbar-list" id="expBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Витрати — операції</div></div>
+        <table class="tx-table">
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th></tr></thead>
+          <tbody id="expTxBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ ANALYTICS ============ -->
+    <section class="page" data-page="analytics">
+      <div class="year-grid" id="yearCards"></div>
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Порівняння років</div><div class="card-sub">Доходи над віссю, витрати під нею · 2024 – 2026</div></div>
+          <div class="legend"><span><i class="dot" style="background:var(--income)"></i>Доходи</span><span><i class="dot" style="background:var(--expense)"></i>Витрати</span></div>
+        </div>
+        <div class="flow-wrap"><svg class="flow-svg" id="yearSvg" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet"></svg></div>
+      </div>
+    </section>
+
+    <!-- ============ CATEGORIES ============ -->
+    <section class="page" data-page="categories">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><div><div class="card-title">Категорії доходів</div><div class="card-sub">Куди зараховуються надходження</div></div></div>
+        <div class="cat-grid" id="incCatGrid"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Категорії витрат</div><div class="card-sub">Олівець відкриває редагування: іконка, назва, фіксована/змінна</div></div></div>
+        <div class="cat-section-label">
+          <svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Фіксовані · автоматично щомісяця
+          <span class="sum" id="fixedSumLbl"></span>
+        </div>
+        <div class="cat-grid" id="expFixedGrid"></div>
+        <div class="cat-section-label" style="margin-top:22px">Змінні</div>
+        <div class="cat-grid" id="expVarGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="page" data-page="settings">
+      <div class="card"><div class="placeholder">Налаштування — заглушка для прототипу.<br>Тут буде валюта, тема, підключення Telegram-бота й експорт даних.</div></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-back" id="modalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2>Нова операція</h2>
+    <div class="msub">Так само це робитиме Telegram-бот з твого повідомлення</div>
+    <div class="type-toggle" id="typeToggle">
+      <button class="on-exp" data-type="expense">Витрата</button>
+      <button data-type="income">Дохід</button>
+    </div>
+    <div class="field amount-in">
+      <label>Сума</label>
+      <input type="number" id="fAmount" placeholder="0" inputmode="decimal">
+      <span class="cur">zł</span>
+    </div>
+    <div class="field">
+      <label>Категорія</label>
+      <select id="fCategory"></select>
+    </div>
+    <div class="field" id="subField" style="display:none">
+      <label>Підкатегорія</label>
+      <select id="fSubcategory"></select>
+    </div>
+    <div class="field" id="fixedField">
+      <div class="switch-row">
+        <span class="switch-label">Фіксована · щомісяця</span>
+        <button type="button" class="switch" id="fixedSwitch" role="switch" aria-checked="false"><span class="knob"></span></button>
+      </div>
+      <div class="hint">Додаватиметься автоматично щомісяця. Назву й суму можна змінити в розділі «Категорії».</div>
+    </div>
+    <div class="field">
+      <label>Дата</label>
+      <input type="date" id="fDate">
+    </div>
+    <div class="field">
+      <label>Нотатка</label>
+      <input type="text" id="fNote" placeholder="напр. Biedronka, пальне…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelBtn">Скасувати</button>
+      <button class="btn-save" id="saveBtn">Додати</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY / SUBCATEGORY EDIT MODAL -->
+<div class="modal-back" id="catModalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2 id="catModalTitle">Редагувати категорію</h2>
+    <div class="msub" id="catModalSub">Іконка, назва та тип витрати</div>
+    <div class="field" id="emojiField">
+      <label>Іконка</label>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+    <div class="field">
+      <label>Назва</label>
+      <input type="text" id="cName" placeholder="Назва категорії">
+    </div>
+    <div class="field" id="cFixedField">
+      <div class="switch-row">
+        <span class="switch-label">Фіксована · щомісяця</span>
+        <button type="button" class="switch" id="cFixedSwitch" role="switch" aria-checked="false"><span class="knob"></span></button>
+      </div>
+      <div class="hint">Стала сума додається автоматично щомісяця й потрапляє в блок «Фіксовані».</div>
+    </div>
+    <div class="field amount-in" id="cAmountField">
+      <label>Сума на місяць</label>
+      <input type="number" id="cAmount" placeholder="0" step="0.01" inputmode="decimal">
+      <span class="cur">zł</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="catCancelBtn">Скасувати</button>
+      <button class="btn-save" id="catSaveBtn">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-back" id="setModalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2>Налаштування</h2>
+    <div class="msub">Профіль акаунта</div>
+    <div class="field"><label>Ім'я</label><input type="text" id="setName" placeholder="Твоє ім'я"></div>
+    <div class="field"><label>Email</label><input type="email" id="setEmail" placeholder="you@email.com"></div>
+    <div class="hint" id="setHint" style="min-height:0"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="setCancelBtn">Закрити</button>
+      <button class="btn-save" id="setSaveBtn">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH GATE -->
+<div class="auth-gate" id="authGate" style="display:none">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15c3-6 5 6 8 0s5-6 8 0"/></svg></div>
+      <div><div class="brand-name" style="font-size:20px">Потік</div><div class="brand-sub">особисті фінанси</div></div>
+    </div>
+    <div class="auth-tabs" id="authTabs">
+      <button class="on" data-mode="signin">Вхід</button>
+      <button data-mode="signup">Реєстрація</button>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="authEmail" placeholder="you@email.com" autocomplete="email"></div>
+    <div class="field" id="authPassField"><label>Пароль</label><input type="password" id="authPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="field" id="authNameField" style="display:none"><label>Ім'я</label><input type="text" id="authName" placeholder="Твоє ім'я"></div>
+    <button class="btn-save auth-submit" id="authSubmit">Увійти</button>
+    <div class="auth-msg" id="authMsg"></div>
+    <div class="auth-links">
+      <button id="authForgot">Забув пароль?</button>
+      <button id="authResend" style="display:none">Надіслати лист ще раз</button>
+    </div>
+    <div class="auth-note" id="authDemoNote">Ключі Supabase не вписані — застосунок відкрито в демо-режимі.</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   НАЛАШТУВАННЯ SUPABASE
+   Встав сюди свої значення з Supabase → Settings → API.
+   Поки порожні — застосунок працює як демо (нічого не пише в базу).
+   ============================================================ */
+const SUPABASE_URL      = 'https://kaiishbdzmpeojnverve.supabase.co';   // ← Project URL
+const SUPABASE_ANON_KEY = 'sb_publishable_rEzAtghOxEwpVROUvSlz7Q_v4YmL7b9';   // ← anon public ключ
+
+const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const MONTHS_FULL = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
+let PERIOD = { year: 2026, month: 6, label: 'липень 2026' }; // демо: липень 2026
+const capitalize = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+/* ================= DATA ================= */
+const fmt = n => new Intl.NumberFormat('uk-UA').format(Math.round(n));
+const MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+const PENCIL_SVG = '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.05 2.05 0 0 1 2.9 2.9L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+const REPEAT_PATHS = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
+const REPEAT_SVG = '<svg viewBox="0 0 24 24">'+REPEAT_PATHS+'</svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+
+const yearly = {
+  2024:[[9800,6200],[10200,5800],[11000,7100],[9500,6400],[12000,6900],[10800,7300],[11500,6100],[9900,8200],[12500,6700],[13000,7000],[11800,7600],[14200,9100]],
+  2025:[[12500,6800],[13100,6300],[14000,7500],[12800,7000],[15200,7200],[13900,7800],[14600,6600],[12900,8400],[15800,7100],[16200,7400],[15100,8000],[17500,9600]],
+  2026:[[14200,9200],[15000,8800],[16100,9600],[14800,9100],[17200,9300],[15900,9800],[16400,9627]]
+};
+
+const expenseCats = [
+  // фіксовані — підставляються автоматично щомісяця (value = сума на місяць)
+  {name:'Житло (кредит)',   icon:'🏠', value:3225,  color:'#5B7A8C', fixed:true},
+  {name:'LuxMed',           icon:'🏥', value:699,   color:'#C57B7B', fixed:true},
+  {name:'Бухгалтерія',      icon:'🧾', value:307.5, color:'#8A6D9C', fixed:true},
+  {name:'Комуналка',        icon:'🔌', color:'#4E8A82', subs:[
+      {name:'Стала частина', icon:'🧾', value:756.49, fixed:true},
+      {name:'Світло',        icon:'💡', value:210,    fixed:false},
+  ]},
+  {name:'Karta miejska',    icon:'🚌', value:180,   color:'#A88B4E', fixed:true, ask:true},
+  {name:'Інтернет',         icon:'🌐', value:80,    color:'#6E8A4E', fixed:true},
+  {name:'Мобільний',        icon:'📱', value:60,    color:'#C89B3C', fixed:true},
+  {name:'iCloud',           icon:'☁️', value:15,    color:'#927C9A', fixed:true},
+  // змінні
+  {name:'Їжа',              icon:'🛒', value:1850,  color:'#2F7A55'},
+  {name:'Авто',             icon:'🚗', value:780,   color:'#B8503A'},
+  {name:'Побутове',         icon:'🧹', value:540,   color:'#A9744F'},
+  {name:'Кафе',             icon:'☕', value:480,   color:'#B58A5E'},
+  {name:'Одяг',             icon:'👕', value:460,   color:'#C0857A'},
+  {name:'Розваги',          icon:'🎬', value:320,   color:'#7E9A5E'},
+  {name:'Здоров\u2019я',    icon:'💊', value:230,   color:'#5E8F86'},
+  {name:'Підписки',         icon:'💳', value:190,   color:'#9A7CA0'},
+  {name:'Різне',            icon:'📦', value:210,   color:'#7E7A6B'},
+];
+// категорії без витрат цього місяця, але лишаються в системі
+const expenseCatsExtra = [
+  {name:'Подарунки',      icon:'🎁', value:0, color:'#C89B7B'},
+  {name:'Дні народження', icon:'🎂', value:0, color:'#B08A5E'},
+];
+
+const incomeCats = [
+  {name:'Зарплата',        icon:'💼', value:9000, color:'#2F7A55'},
+  {name:'Клієнти — сайти', icon:'💻', value:5400, color:'#4E8A82'},
+  {name:'Клієнти — дизайн',icon:'🎨', value:2000, color:'#5B7A8C'},
+];
+
+let transactions = [
+  {d:'31 лип', cat:'Кафе', color:'#A9744F', note:'Кава з клієнтом', amt:-38, type:'expense'},
+  {d:'30 лип', cat:'Клієнти — сайти', color:'#4E8A82', note:'Wildix, етап 2', amt:4200, type:'income'},
+  {d:'29 лип', cat:'Їжа', color:'#2F7A55', note:'Biedronka', amt:-214, type:'expense'},
+  {d:'28 лип', cat:'Авто', color:'#B8503A', note:'Пальне', amt:-280, type:'expense'},
+  {d:'27 лип', cat:'Підписки', color:'#927C9A', note:'Figma + хостинг', amt:-190, type:'expense'},
+  {d:'26 лип', cat:'Клієнти — дизайн', color:'#5B7A8C', note:'K&K, лендинг', amt:2000, type:'income'},
+  {d:'25 лип', cat:'Зарплата', color:'#2F7A55', note:'Місячна', amt:9000, type:'income'},
+  {d:'24 лип', cat:'Одяг', color:'#C57B7B', note:'Zalando', amt:-320, type:'expense'},
+  {d:'23 лип', cat:'Здоров\u2019я', color:'#B58A5E', note:'Аптека', amt:-85, type:'expense'},
+  {d:'22 лип', cat:'Житло (кредит)', color:'#5B7A8C', note:'Кредит за квартиру', amt:-3225, type:'expense'},
+  {d:'20 лип', cat:'LuxMed', color:'#C57B7B', note:'Стандарт', amt:-699, type:'expense'},
+  {d:'18 лип', cat:'Бухгалтерія', color:'#8A6D9C', note:'Обслуговування ФОП', amt:-307.5, type:'expense'},
+  {d:'17 лип', cat:'Комуналка', sub:'Стала частина', color:'#4E8A82', note:'Опалення, вода, вивіз', amt:-756.49, type:'expense'},
+  {d:'16 лип', cat:'Комуналка', sub:'Світло', color:'#4E8A82', note:'Rachunek za prąd', amt:-210, type:'expense'},
+  {d:'21 лип', cat:'Розваги', color:'#6E8A4E', note:'Кіно', amt:-64, type:'expense'},
+];
+
+let currentYear = 2026;
+let flowFilter = 'all';
+let modalType = 'expense';
+
+/* ================= HELPERS ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function yearTotals(y){
+  const d = yearly[y];
+  const inc = d.reduce((s,m)=>s+m[0],0);
+  const exp = d.reduce((s,m)=>s+m[1],0);
+  return {inc, exp, net:inc-exp};
+}
+
+/* ============ STAT CARDS ============ */
+function renderStats(){
+  const yData = yearly[PERIOD.year] || [];
+  const cur = yData[PERIOD.month] || [0,0];
+  const prev = PERIOD.month>0 ? (yData[PERIOD.month-1]||[0,0]) : [0,0];
+  const inc=cur[0], exp=cur[1], bal=inc-exp;
+  const incD = prev[0] ? ((inc-prev[0])/prev[0]*100) : null;
+  const expD = prev[1] ? ((exp-prev[1])/prev[1]*100) : null;
+  const prevName = PERIOD.month>0 ? MONTHS_FULL[PERIOD.month-1] : '';
+  const cards = [
+    {name:'Баланс місяця', ic:'balance', val:bal, delta:null, iconPath:'<path d="M3 6h18v12H3z"/><path d="M3 10h18"/>'},
+    {name:'Доходи', ic:'income', val:inc, delta:incD, iconPath:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
+    {name:'Витрати', ic:'expense', val:exp, delta:expD, invert:true, iconPath:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
+    {name:'Заощаджено', ic:'save', val:bal, delta:null, iconPath:'<path d="M20 12V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/><circle cx="16" cy="12" r="1.5"/>'},
+  ];
+  $('#statsRow').innerHTML = cards.map(c=>{
+    let delta='';
+    if(c.delta!==null){
+      const good = c.invert ? c.delta<0 : c.delta>0;
+      const arrow = c.delta>=0 ? '<path d="M7 14l5-5 5 5"/>' : '<path d="M7 10l5 5 5-5"/>';
+      delta = `<div class="stat-delta ${good?'up':'down'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${arrow}</svg>${Math.abs(c.delta).toFixed(1)}%<span class="base">від ${prevName}</span></div>`;
+    } else {
+      delta = `<div class="stat-delta"><span class="base">${PERIOD.label}</span></div>`;
+    }
+    return `<div class="stat">
+      <div class="stat-top">
+        <span class="stat-name">${c.name}</span>
+        <span class="stat-ic ic-${c.ic}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${c.iconPath}</svg></span>
+      </div>
+      <div class="stat-val num">${fmt(c.val)}<span class="cur">zł</span></div>
+      ${delta}
+    </div>`;
+  }).join('');
+}
+
+const FLOW_DEFS = `<defs>
+  <linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#49A574"/><stop offset="1" stop-color="#2F7A55"/>
+  </linearGradient>
+  <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#C4553B"/><stop offset="1" stop-color="#D9795F"/>
+  </linearGradient>
+</defs>`;
+/* ============ FLOW / SPINE CHART ============ */
+function renderFlow(svgId, data, labels, filter){
+  const svg = document.getElementById(svgId);
+  const vb = (svg.getAttribute('viewBox')||'0 0 720 320').split(' ').map(Number);
+  const W=vb[2]||720, H=vb[3]||320, padX=24, padTop=18, padBot=34;
+  const midY = padTop + (H-padTop-padBot)*0.56;
+  const upH = midY - padTop;
+  const dnH = (H-padBot) - midY;
+  const showInc = filter!=='expense';
+  const showExp = filter!=='income';
+  let maxInc=1, maxExp=1;
+  data.forEach(d=>{ if(d[0]>maxInc)maxInc=d[0]; if(d[1]>maxExp)maxExp=d[1]; });
+  const n=data.length||1;
+  const slot=(W-padX*2)/n;
+  const bw=Math.min(28, slot*0.46);
+  const rx=Math.min(6,bw/2);
+
+  let bars='';
+  data.forEach((d,i)=>{
+    const cx = padX + slot*i + slot/2;
+    const incBarH = showInc ? (d[0]/maxInc)*upH*0.92 : 0;
+    const expBarH = showExp ? (d[1]/maxExp)*dnH*0.92 : 0;
+    bars += `<g class="bar-hit"><title>${labels[i]}: +${fmt(d[0])} / -${fmt(d[1])} zł</title>`;
+    if(showInc && incBarH>0.5) bars += `<rect class="bar" x="${(cx-bw/2).toFixed(1)}" y="${(midY-incBarH).toFixed(1)}" width="${bw.toFixed(1)}" height="${incBarH.toFixed(1)}" rx="${rx}" fill="url(#gInc)"/>`;
+    if(showExp && expBarH>0.5) bars += `<rect class="bar" x="${(cx-bw/2).toFixed(1)}" y="${midY.toFixed(1)}" width="${bw.toFixed(1)}" height="${expBarH.toFixed(1)}" rx="${rx}" fill="url(#gExp)"/>`;
+    bars += `</g>`;
+    bars += `<text class="mlabel" x="${cx.toFixed(1)}" y="${H-10}">${labels[i]}</text>`;
+  });
+  const axis = `<line class="axis-line" x1="${padX}" y1="${midY}" x2="${W-padX}" y2="${midY}"/>`;
+  svg.innerHTML = FLOW_DEFS + axis + bars;
+}
+
+/* ============ DONUT ============ */
+function shade(hex, amt){
+  const h=hex.replace('#',''); let r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  r=Math.min(255,Math.round(r+(255-r)*amt)); g=Math.min(255,Math.round(g+(255-g)*amt)); b=Math.min(255,Math.round(b+(255-b)*amt));
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function renderDonut(svgId, legendId, totalId, cats){
+  const nonzero = cats.filter(c=>(c.value||0)>0);
+  const total = nonzero.reduce((s,c)=>s+c.value,0);
+  const cx=98, cy=98, R=76, C=2*Math.PI*R, sw=26, gap=total>0?2.5:0;
+  let off=0, segs='', defs='';
+  nonzero.forEach((c,i)=>{
+    const frac=c.value/total;
+    const len=Math.max(0, frac*C - gap);
+    const gid=`dg_${svgId}_${i}`;
+    defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${shade(c.color,0.22)}"/><stop offset="1" stop-color="${c.color}"/></linearGradient>`;
+    segs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="url(#${gid})" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"><title>${c.name}: ${fmt(c.value)} zł</title></circle>`;
+    off += frac*C;
+  });
+  document.getElementById(svgId).innerHTML =
+    `<defs>${defs}</defs><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface-2)" stroke-width="${sw}"/>` + segs;
+  document.getElementById(totalId).textContent = fmt(total);
+  const top = [...nonzero].sort((a,b)=>b.value-a.value).slice(0,6);
+  document.getElementById(legendId).innerHTML = (top.length?top:cats.slice(0,4)).map(c=>
+    `<div class="cat-row"><i class="dot" style="background:${c.color}"></i><span class="nm">${c.name}</span><span class="vl">${fmt(c.value)} zł</span></div>`
+  ).join('');
+}
+
+/* ============ TX TABLE ============ */
+function txRow(t){
+  const pos = t.amt>0;
+  const sign = pos ? '+' : '−';
+  return `<tr>
+    <td class="tx-date">${t.d}</td>
+    <td><span class="tx-cat"><i class="dot" style="background:${t.color}"></i>${t.cat}${t.sub?' · '+t.sub:''}</span></td>
+    <td class="tx-note">${t.note}</td>
+    <td class="tx-amt ${pos?'pos':'neg'}">${sign}${fmt(Math.abs(t.amt))} zł</td>
+  </tr>`;
+}
+function renderTx(){
+  $('#txBody').innerHTML = transactions.map(txRow).join('');
+  $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income').map(txRow).join('');
+  $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense').map(txRow).join('');
+}
+
+/* ============ CATEGORY BARS ============ */
+function renderCatBars(elId, cats){
+  const max = Math.max(...cats.map(c=>c.value||0),1);
+  document.getElementById(elId).innerHTML = cats.map(c=>
+    `<div class="catbar">
+      <span class="nm"><span class="sw" style="background:${c.color}22">${c.icon||''}</span><span class="lbl">${c.name}</span>${isFixedCat(c)?' <svg class="fix-ic" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>':''}</span>
+      <span class="track"><span class="fill" style="width:${((c.value||0)/max*100).toFixed(0)}%;background:${c.color}"></span></span>
+      <span class="vl">${fmt(c.value||0)} zł</span>
+      <button class="bar-edit" data-act="editcat" data-name="${esc(c.name)}" title="Редагувати">${PENCIL_SVG}</button>
+    </div>`
+  ).join('');
+}
+
+/* ============ INCOME/EXPENSE STATS ============ */
+function miniStats(elId, items){
+  document.getElementById(elId).innerHTML = items.map(c=>`
+    <div class="stat">
+      <div class="stat-top"><span class="stat-name">${c.name}</span>
+        <span class="stat-ic ${c.ic}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg></span></div>
+      <div class="stat-val num">${fmt(c.val)}<span class="cur">zł</span></div>
+      <div class="stat-delta"><span class="base">${c.sub}</span></div>
+    </div>`).join('');
+}
+
+function refreshExpStats(){
+  syncSubtotals();
+  const all=[...expenseCats,...expenseCatsExtra];
+  const total = all.reduce((s,c)=>s+catValueOf(c),0);
+  const fixedPlan = all.reduce((s,c)=>s+planFixedOf(c),0);
+  const fixedCount = all.filter(isFixedCat).length;
+  const variableActual = all.filter(c=>!isFixedCat(c)).reduce((s,c)=>s+catValueOf(c),0);
+  if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month][1] = Math.round(total);
+  miniStats('expStats',[
+    {name:'Витрати за '+PERIOD.label.split(' ')[0], val:total, sub:PERIOD.label, ic:'ic-expense', icon:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
+    {name:'Фіксовані / міс', val:fixedPlan, sub:fixedCount+' категорій · план', ic:'ic-expense', icon:REPEAT_PATHS},
+    {name:'Змінні', val:variableActual, sub:'факт цього місяця', ic:'ic-expense', icon:'<path d="M3 6h18M3 12h18M3 18h18"/>'},
+  ]);
+}
+
+/* ============ ANALYTICS ============ */
+function renderAnalytics(){
+  const cy=PERIOD.year;
+  const years=[cy-2, cy-1, cy];
+  $('#yearCards').innerHTML = years.map(y=>{
+    const t=yearTotals(y);
+    const isCur=y===cy;
+    const partial = isCur ? ` <span style="color:var(--faint);font-weight:400;font-size:11px">(${PERIOD.month+1} міс.)</span>` : '';
+    return `<div class="year-card ${isCur?'this':''}">
+      <div class="yr">${y}${partial} ${isCur?'<span class="tag">поточний</span>':''}</div>
+      <div class="year-line"><span class="k">Доходи</span><span class="v up">${fmt(t.inc)} zł</span></div>
+      <div class="year-line"><span class="k">Витрати</span><span class="v" style="color:var(--expense)">${fmt(t.exp)} zł</span></div>
+      <div class="year-line year-net"><span class="k">Заощаджено</span><span class="v">${fmt(t.net)} zł</span></div>
+    </div>`;
+  }).join('');
+  const combined=[]; const labels=[];
+  years.forEach(y=>{ const t=yearTotals(y); combined.push([t.inc, t.exp]); labels.push(String(y)); });
+  renderFlow('yearSvg', combined, labels, 'all');
+}
+
+/* ============ CATEGORIES PAGE ============ */
+function esc(s){return String(s).replace(/"/g,'&quot;');}
+function catValueOf(c){ return c.subs ? c.subs.reduce((s,x)=>s+(x.value||0),0) : (c.value||0); }
+function catFixedOf(c){ return c.subs ? c.subs.filter(x=>x.fixed).reduce((s,x)=>s+(x.value||0),0) : (c.fixed?(c.value||0):0); }
+function planOf(x){ return x.plan!=null ? x.plan : (x.value||0); }
+function isFixedCat(c){ return c.subs ? c.subs.some(s=>s.fixed) : !!c.fixed; }
+function planFixedOf(c){ return c.subs ? c.subs.filter(s=>s.fixed).reduce((s,x)=>s+planOf(x),0) : (c.fixed?planOf(c):0); }
+function syncSubtotals(){ [...expenseCats,...expenseCatsExtra].forEach(c=>{ if(c.subs) c.value=catValueOf(c); }); }
+
+function subRowHTML(s){
+  const meta = s.fixed
+    ? `<span class="sub-amt">${fmt(planOf(s))} zł</span><span class="mo-lbl">щомісяця</span>`
+    : `<span class="sub-var">змінна · ${fmt(s.value||0)} zł</span>`;
+  return `<div class="sub-row" data-sub="${esc(s.name)}">
+    <span class="sub-emoji">${s.icon||'▫️'}</span>
+    <span class="sub-name">${s.name}</span>
+    ${s.fixed?'<svg class="fix-ic" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>':''}
+    <span class="sub-spacer"></span>
+    ${meta}
+    <button class="edit-btn" data-act="editsub" title="Редагувати">${PENCIL_SVG}</button>
+  </div>`;
+}
+function catCardHTML(c, type){
+  const emoji = `<div class="cat-swatch" style="background:${c.color}22">${c.icon||''}</div>`;
+  const editBtn = `<button class="edit-btn lg" data-act="editcat" data-name="${esc(c.name)}" title="Редагувати">${PENCIL_SVG}</button>`;
+  // expense category WITH subcategories → expandable full-width card
+  if(type==='expense' && c.subs){
+    const total=catValueOf(c), fx=planFixedOf(c);
+    return `<div class="cat-card has-subs" data-name="${esc(c.name)}" data-type="expense">
+      <div class="cat-head">
+        ${emoji}
+        <span class="t">${c.name}</span>
+        ${fx>0?`<span class="fixchip">${fmt(fx)} фікс</span>`:''}
+        <span class="total">${fmt(total)} zł</span>
+        ${editBtn}
+      </div>
+      <div class="subs">
+        ${c.subs.map(subRowHTML).join('')}
+        <button class="add-sub-btn" data-act="newsub" data-name="${esc(c.name)}">${PLUS_SVG} підкатегорія</button>
+      </div>
+    </div>`;
+  }
+  const isFixed = type==='expense' && !!c.fixed;
+  const sub = isFixed
+    ? `<div class="s"><span class="sub-amt">${fmt(planOf(c))} zł</span><span class="mo-lbl">щомісяця</span></div>`
+    : `<div class="s">${type==='income'?'дохід':'витрата'}${c.ask?' · вкажи суму':''}</div>`;
+  const addSub = type==='expense' ? `<button class="add-sub-btn flat" data-act="newsub" data-name="${esc(c.name)}">${PLUS_SVG} підкатегорія</button>` : '';
+  const fixIc = isFixed ? ' <svg class="fix-ic" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' : '';
+  return `<div class="cat-card" data-name="${esc(c.name)}" data-type="${type}">
+    ${emoji}
+    <div class="info">
+      <div class="t-row"><span class="t">${c.name}</span>${fixIc}</div>
+      ${sub}
+      ${addSub}
+    </div>
+    ${editBtn}
+  </div>`;
+}
+function renderCategoriesPage(){
+  syncSubtotals();
+  $('#incCatGrid').innerHTML = incomeCats.map(c=>catCardHTML(c,'income')).join('');
+  const fixed = expenseCats.filter(isFixedCat);
+  const variable = [...expenseCats.filter(c=>!isFixedCat(c)), ...expenseCatsExtra];
+  $('#expFixedGrid').innerHTML = fixed.map(c=>catCardHTML(c,'expense')).join('');
+  $('#expVarGrid').innerHTML = variable.map(c=>catCardHTML(c,'expense')).join('');
+  const fs = [...expenseCats,...expenseCatsExtra].reduce((s,c)=>s+planFixedOf(c),0);
+  const lbl = $('#fixedSumLbl'); if(lbl) lbl.textContent = fmt(fs)+' zł / міс';
+}
+
+/* find a category object + its array by name */
+function findExpCat(name){
+  let obj = expenseCats.find(c=>c.name===name);
+  if(obj) return {obj, arr:expenseCats};
+  obj = expenseCatsExtra.find(c=>c.name===name);
+  if(obj) return {obj, arr:expenseCatsExtra};
+  return null;
+}
+function findSub(catName, subName){
+  const f=findExpCat(catName); if(!f||!f.obj.subs) return null;
+  const s=f.obj.subs.find(x=>x.name===subName); return s?{cat:f.obj, sub:s}:null;
+}
+function rebuildCatColors(){
+  Object.keys(catColors).forEach(k=>delete catColors[k]);
+  [...expenseCats,...expenseCatsExtra,...incomeCats].forEach(c=>catColors[c.name]=c.color);
+}
+function reRenderCats(){
+  syncSubtotals();
+  rebuildCatColors();
+  renderCategoriesPage();
+  renderCatBars('expBars', [...expenseCats].sort((a,b)=>catValueOf(b)-catValueOf(a)));
+  renderDonut('donutSvg','donutLegend','donutTotal', expenseCats);
+  refreshExpStats();
+}
+
+/* ============ CATEGORY EDIT MODAL ============ */
+const EMOJIS = ['🏠','🏥','🧾','🔌','💡','🚌','🌐','📱','☁️','🛒','🚗','🧹','☕','👕','🎬','💊','💳','📦','🎁','🎂','💼','💻','🎨','🍽️','🏋️','✈️','🎓','⛽','🐶','💧','📚','🎮','💅','🧸','🚕','🏦','🎧','🍺','💇','🅿️'];
+let catEdit=null, catEditFixed=false;
+function setCatSwitch(on){ catEditFixed=on; $('#cFixedSwitch').classList.toggle('on',on); $('#cFixedSwitch').setAttribute('aria-checked',on); $('#cAmountField').style.display = on ? 'block':'none'; }
+function renderEmojiGrid(sel){ $('#emojiGrid').innerHTML = EMOJIS.map(e=>`<button type="button" data-emoji="${e}" class="${e===sel?'sel':''}">${e}</button>`).join(''); }
+$('#cFixedSwitch').addEventListener('click',()=>setCatSwitch(!catEditFixed));
+$('#emojiGrid').addEventListener('click',e=>{
+  const b=e.target.closest('[data-emoji]'); if(!b||!catEdit)return;
+  catEdit.icon=b.dataset.emoji;
+  $$('#emojiGrid button').forEach(x=>x.classList.toggle('sel', x===b));
+});
+
+function openCatModal(opt){
+  catEdit={kind:opt.kind, catName:opt.catName, subName:opt.subName, icon:''};
+  let name='', fixed=false, amount='', allowFixed=true, title='', sub='';
+  if(opt.kind==='cat'){
+    const inc=incomeCats.find(c=>c.name===opt.catName);
+    if(inc){ catEdit.icon=inc.icon||''; name=inc.name; allowFixed=false; title='Редагувати категорію'; sub='Дохід — іконка та назва'; }
+    else {
+      const c=findExpCat(opt.catName).obj; catEdit.icon=c.icon||''; name=c.name; title='Редагувати категорію';
+      if(c.subs){ allowFixed=false; sub='Категорія з підкатегоріями — тип задається в кожній підкатегорії'; }
+      else { fixed=!!c.fixed; amount=c.value||''; sub='Іконка, назва та тип витрати'; }
+    }
+  } else if(opt.kind==='sub'){
+    const s=findSub(opt.catName, opt.subName).sub;
+    catEdit.icon=s.icon||''; name=s.name; fixed=!!s.fixed; amount=s.value||''; title='Редагувати підкатегорію'; sub='Всередині «'+opt.catName+'»';
+  } else { // newsub
+    title='Нова підкатегорія'; sub='Всередині «'+opt.catName+'»';
+  }
+  $('#catModalTitle').textContent=title;
+  $('#catModalSub').textContent=sub;
+  $('#cName').value=name;
+  renderEmojiGrid(catEdit.icon);
+  $('#cFixedField').style.display = allowFixed ? 'block':'none';
+  setCatSwitch(allowFixed ? fixed : false);
+  if(!allowFixed){ $('#cAmountField').style.display='none'; }
+  $('#cAmount').value = amount;
+  $('#catModalBack').classList.add('open');
+  setTimeout(()=>$('#cName').focus(),50);
+}
+function closeCatModal(){ $('#catModalBack').classList.remove('open'); catEdit=null; }
+$('#catCancelBtn').addEventListener('click',closeCatModal);
+$('#catModalBack').addEventListener('click',e=>{ if(e.target===$('#catModalBack'))closeCatModal(); });
+
+$('#catSaveBtn').addEventListener('click', async ()=>{
+  if(!catEdit)return;
+  const o=catEdit;
+  const newName=($('#cName').value||'').trim();
+  const icon=o.icon||'';
+  const amt=parseFloat($('#cAmount').value);
+
+  if(DB_ON){
+    $('#catSaveBtn').disabled=true;
+    try{
+      if(o.kind==='cat'){
+        const inc=incomeCats.find(c=>c.name===o.catName);
+        const target = inc || findExpCat(o.catName).obj;
+        const patch={ icon }; if(newName) patch.name=newName;
+        if(!inc && !target.subs){ patch.is_fixed=catEditFixed; if(catEditFixed && amt>0) patch.monthly_amount=amt; }
+        await sb.from('categories').update(patch).eq('id', target.id);
+      } else if(o.kind==='sub'){
+        const s=findSub(o.catName, o.subName).sub;
+        const patch={ icon, is_fixed:catEditFixed }; if(newName) patch.name=newName;
+        if(catEditFixed && amt>0) patch.monthly_amount=amt;
+        await sb.from('categories').update(patch).eq('id', s.id);
+      } else if(o.kind==='newsub'){
+        if(!newName){ $('#cName').focus(); $('#catSaveBtn').disabled=false; return; }
+        const parent=findExpCat(o.catName).obj;
+        const kids=parent.subs||[];
+        const rows=[];
+        const { data:{ user } } = await sb.auth.getUser();
+        const uid = user && user.id;
+        if(!kids.length){ rows.push({ user_id:uid, name: parent.fixed?'Стала частина':'Основне', icon:parent.icon, color:parent.color, type:'expense', parent_id:parent.id, is_fixed:!!parent.fixed, monthly_amount:parent.plan||parent.value||0, sort:1 }); }
+        rows.push({ user_id:uid, name:newName, icon:icon||'▫️', color:parent.color, type:'expense', parent_id:parent.id, is_fixed:catEditFixed, monthly_amount:(catEditFixed&&amt>0)?amt:0, sort:kids.length+2 });
+        await sb.from('categories').insert(rows);
+      }
+    }catch(err){ alert('Не вдалося зберегти: '+(err.message||err)); $('#catSaveBtn').disabled=false; return; }
+    $('#catSaveBtn').disabled=false;
+    closeCatModal();
+    await reload();
+    return;
+  }
+
+  // ---- демо-режим ----
+  if(o.kind==='cat'){
+    const inc=incomeCats.find(c=>c.name===o.catName);
+    const target = inc || findExpCat(o.catName).obj;
+    const oldName=target.name;
+    if(newName){ target.name=newName; target.ask=false; transactions.forEach(t=>{if(t.cat===oldName)t.cat=newName;}); }
+    target.icon=icon;
+    if(!inc && !target.subs){
+      target.fixed=catEditFixed;
+      if(catEditFixed){ if(amt>0){ target.value=amt; target.ask=false; }
+        const f=findExpCat(target.name); if(f && f.arr===expenseCatsExtra){ expenseCatsExtra.splice(expenseCatsExtra.indexOf(target),1); expenseCats.push(target); } }
+    }
+  } else if(o.kind==='sub'){
+    const s=findSub(o.catName, o.subName).sub; const oldSub=s.name;
+    if(newName){ s.name=newName; transactions.forEach(t=>{if(t.cat===o.catName && t.sub===oldSub)t.sub=newName;}); }
+    s.icon=icon; s.fixed=catEditFixed;
+    if(catEditFixed && amt>0) s.value=amt;
+  } else if(o.kind==='newsub'){
+    if(!newName){ $('#cName').focus(); return; }
+    const c=findExpCat(o.catName).obj;
+    if(!c.subs){ c.subs=[{name:c.fixed?'Стала частина':'Основне', icon:c.icon, value:c.value||0, fixed:!!c.fixed}]; }
+    c.subs.push({name:newName, icon:icon||'▫️', value:(catEditFixed&&amt>0)?amt:0, fixed:catEditFixed});
+  }
+  renderAll();
+  closeCatModal();
+});
+
+/* ================= INIT RENDER ================= */
+function renderAll(){
+  syncSubtotals();
+  const yr = yearly[currentYear] || [];
+  renderStats();
+  renderFlow('flowSvg', yr, MONTHS.slice(0,yr.length||12), flowFilter);
+  renderDonut('donutSvg','donutLegend','donutTotal', expenseCats);
+  renderDonut('incDonut','incDonutLegend','incDonutTotal', incomeCats);
+  renderTx();
+  renderCatBars('expBars', [...expenseCats].sort((a,b)=>catValueOf(b)-catValueOf(a)));
+  renderCatBars('incBars', incomeCats);
+  const incTotal = incomeCats.reduce((s,c)=>s+(c.value||0),0);
+  const salary = (incomeCats.find(c=>/зарплат/i.test(c.name))||{}).value||0;
+  const clients = incTotal - salary;
+  const salaryPct = incTotal ? Math.round(salary/incTotal*100) : 0;
+  miniStats('incStats',[
+    {name:'Дохід за '+PERIOD.label.split(' ')[0], val:incTotal, sub:PERIOD.label, ic:'ic-income', icon:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
+    {name:'Зарплата', val:salary, sub:salaryPct+'% доходу', ic:'ic-income', icon:'<rect x="3" y="6" width="18" height="12" rx="2"/>'},
+    {name:'Від клієнтів', val:clients, sub:'сайти + дизайн', ic:'ic-income', icon:'<path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>'},
+  ]);
+  refreshExpStats();
+  renderAnalytics();
+  renderCategoriesPage();
+  renderSplit();
+  renderExpTrend();
+  renderExpFixDonut();
+  applyPeriodLabels();
+}
+
+/* Overview: fixed vs variable structure bar */
+function renderSplit(){
+  const all=[...expenseCats,...expenseCatsExtra];
+  const fixed=all.reduce((s,c)=>s+planFixedOf(c),0);
+  const variable=all.filter(c=>!isFixedCat(c)).reduce((s,c)=>s+catValueOf(c),0);
+  const total=fixed+variable||1;
+  const fPct=Math.round(fixed/total*100), vPct=100-fPct;
+  const bar=$('#splitBar'); if(bar) bar.innerHTML=
+    `<div class="seg-fx" style="flex:0 0 ${fPct}%">${fPct>12?fPct+'%':''}</div>`+
+    `<div class="seg-var" style="flex:0 0 ${vPct}%">${vPct>12?vPct+'%':''}</div>`;
+  const leg=$('#splitLegend'); if(leg) leg.innerHTML=
+    `<div class="row"><span class="sw2" style="background:var(--grad-brand)"></span><span class="k">Фіксовані (план)</span><span class="v">${fmt(fixed)} zł</span></div>`+
+    `<div class="row"><span class="sw2" style="background:var(--grad-expense)"></span><span class="k">Змінні (факт)</span><span class="v">${fmt(variable)} zł</span></div>`;
+}
+
+/* Expenses: monthly trend (expense only) */
+function renderExpTrend(){
+  const yr=yearly[currentYear]||[];
+  const data=yr.map(m=>[0, m[1]]); // only expense side
+  renderFlow('expTrendSvg', data, MONTHS.slice(0,data.length||12), 'expense');
+  const ey=$('#expTrendYear'); if(ey) ey.textContent=currentYear;
+}
+
+/* Expenses: fixed vs variable donut */
+function renderExpFixDonut(){
+  const all=[...expenseCats,...expenseCatsExtra];
+  const fixed=all.reduce((s,c)=>s+planFixedOf(c),0);
+  const variable=all.filter(c=>!isFixedCat(c)).reduce((s,c)=>s+catValueOf(c),0);
+  renderDonut('expFixDonut','expFixLegend','expFixTotal',[
+    {name:'Фіксовані', value:fixed, color:'#2F7A55'},
+    {name:'Змінні', value:variable, color:'#B8503A'},
+  ]);
+}
+
+function applyPeriodLabels(){
+  const cap=capitalize(PERIOD.label);
+  ['donutPeriod','incPeriod','expPeriod','expSplitPeriod'].forEach(id=>{ const el=$('#'+id); if(el) el.textContent=cap; });
+  const fy=$('#flowYear'); if(fy) fy.textContent=currentYear;
+  const ps=$('#pageSub'); if(ps && $$('.nav-item.active')[0] && $$('.nav-item.active')[0].dataset.page==='overview')
+    ps.textContent='Привіт, Андрію — ось твої фінанси за '+PERIOD.label;
+}
+
+/* ================= SUPABASE DATA LAYER ================= */
+function setupYearOptions(){
+  const sel=$('#yearSelect'); if(!sel)return;
+  const yrs=[PERIOD.year, PERIOD.year-1, PERIOD.year-2];
+  sel.innerHTML=yrs.map(y=>`<option value="${y}">${y}</option>`).join('');
+  sel.value=String(PERIOD.year);
+}
+async function loadFromDB(){
+  const [{data:cats,error:e1},{data:txs,error:e2}]=await Promise.all([
+    sb.from('categories').select('*').order('sort'),
+    sb.from('transactions').select('*').order('occurred_at',{ascending:false})
+  ]);
+  if(e1) throw e1; if(e2) throw e2;
+  buildFromDB(cats||[], txs||[]);
+}
+function buildFromDB(cats, txs){
+  const byId={}; cats.forEach(c=>byId[c.id]=c);
+  const childrenOf=pid=>cats.filter(c=>c.parent_id===pid).sort((a,b)=>(a.sort||0)-(b.sort||0));
+  const inMonth=t=>{ const d=new Date(t.occurred_at); return d.getFullYear()===PERIOD.year && d.getMonth()===PERIOD.month; };
+  const spend={}, incSpend={};
+  txs.forEach(t=>{ if(!inMonth(t))return;
+    if(t.type==='expense') spend[t.category_id]=(spend[t.category_id]||0)+Number(t.amount);
+    else incSpend[t.category_id]=(incSpend[t.category_id]||0)+Number(t.amount);
+  });
+
+  const exp=[], inc=[];
+  cats.filter(c=>!c.parent_id).forEach(p=>{
+    if(p.type==='income'){ inc.push({id:p.id, name:p.name, icon:p.icon, color:p.color, value:incSpend[p.id]||0}); return; }
+    const kids=childrenOf(p.id);
+    if(kids.length){
+      const subs=kids.map(k=>({ id:k.id, name:k.name, icon:k.icon, fixed:!!k.is_fixed,
+        plan:Number(k.monthly_amount)||0,
+        value: k.is_fixed ? (Number(k.monthly_amount)||0) : (spend[k.id]||0) }));
+      exp.push({id:p.id, name:p.name, icon:p.icon, color:p.color, subs});
+    } else {
+      exp.push({ id:p.id, name:p.name, icon:p.icon, color:p.color, fixed:!!p.is_fixed,
+        plan:Number(p.monthly_amount)||0,
+        value: p.is_fixed ? (Number(p.monthly_amount)||0) : (spend[p.id]||0) });
+    }
+  });
+  expenseCats.length=0; exp.forEach(x=>expenseCats.push(x));
+  expenseCatsExtra.length=0;                 // у режимі бази все живе в expenseCats
+  incomeCats.length=0; inc.forEach(x=>incomeCats.push(x));
+
+  transactions.length=0;
+  txs.forEach(t=>{
+    const c=byId[t.category_id]; if(!c)return;
+    let parent=c, subName=null;
+    if(c.parent_id){ parent=byId[c.parent_id]||c; subName=c.name; }
+    const d=new Date(t.occurred_at);
+    transactions.push({ id:t.id, category_id:t.category_id,
+      d:d.getDate()+' '+MONTHS[d.getMonth()].toLowerCase(),
+      cat:parent.name, sub:subName||undefined, color:parent.color||'#7E7A6B',
+      note:t.note||'—', amt: t.type==='expense'? -Number(t.amount): Number(t.amount),
+      type:t.type, occurred_at:t.occurred_at });
+  });
+
+  [PERIOD.year, PERIOD.year-1, PERIOD.year-2].forEach(y=>{ yearly[y]=Array.from({length:12},()=>[0,0]); });
+  txs.forEach(t=>{ const d=new Date(t.occurred_at), y=d.getFullYear(), m=d.getMonth();
+    if(yearly[y]){ if(t.type==='income') yearly[y][m][0]+=Number(t.amount); else yearly[y][m][1]+=Number(t.amount); } });
+  // поточний місяць у графіку = план фіксованих + факт змінних (як у картках)
+  const expNow=[...expenseCats].reduce((s,c)=>s+catValueOf(c),0);
+  const incNow=incomeCats.reduce((s,c)=>s+(c.value||0),0);
+  if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month]=[incNow, expNow];
+
+  rebuildCatColors();
+}
+async function reload(){ try{ await loadFromDB(); }catch(err){ console.error(err); } renderAll(); }
+
+/* ================= AUTH ================= */
+let authMode='signin';
+const authMsg=(t,cls)=>{ const el=$('#authMsg'); el.textContent=t||''; el.className='auth-msg'+(cls?' '+cls:''); };
+
+function showGate(show){ $('#authGate').style.display = show ? 'flex' : 'none'; }
+function setAuthMode(m){
+  authMode=m;
+  $$('#authTabs button').forEach(b=>b.classList.toggle('on', b.dataset.mode===m));
+  $('#authNameField').style.display = m==='signup' ? 'block' : 'none';
+  $('#authResend').style.display = 'none';
+  $('#authSubmit').textContent = m==='signup' ? 'Зареєструватися' : 'Увійти';
+  $('#authPass').setAttribute('autocomplete', m==='signup'?'new-password':'current-password');
+  authMsg('');
+}
+
+async function loadUserData(){
+  const now=new Date();
+  PERIOD={year:now.getFullYear(), month:now.getMonth(), label:MONTHS_FULL[now.getMonth()]+' '+now.getFullYear()};
+  currentYear=PERIOD.year;
+  setupYearOptions();
+  try{ await loadFromDB(); }catch(err){ console.error('Supabase load failed:',err); }
+  renderAll();
+}
+
+function fillUserPanel(user){
+  if(!user) return;
+  const name = (user.user_metadata && user.user_metadata.full_name) || (user.email||'').split('@')[0];
+  const email = user.email||'';
+  $('#userName').textContent = name;
+  $('#userEmail').textContent = email;
+  const photo = user.user_metadata && user.user_metadata.avatar_url;
+  const ph=$('#userPhoto');
+  if(photo){ ph.style.backgroundImage=`url("${photo}")`; ph.textContent=''; }
+  else { ph.style.backgroundImage=''; ph.textContent=(name[0]||'А').toUpperCase(); }
+  $('#userPanel').style.display='flex';
+  const ps=$('#pageSub'); if(ps) ps.textContent='Привіт, '+name+' — ось твої фінанси за '+PERIOD.label;
+}
+
+async function onSignedIn(user){
+  showGate(false);
+  fillUserPanel(user);
+  await loadUserData();
+  fillUserPanel(user); // reapply subtitle after render
+}
+
+if(DB_ON){
+  // auth tab switching
+  $('#authTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-mode]'); if(b) setAuthMode(b.dataset.mode); });
+
+  $('#authSubmit').addEventListener('click', async ()=>{
+    const email=$('#authEmail').value.trim(), pass=$('#authPass').value;
+    if(!email || !pass){ authMsg('Впиши email і пароль','err'); return; }
+    $('#authSubmit').disabled=true;
+    try{
+      if(authMode==='signup'){
+        const name=$('#authName').value.trim();
+        const { error } = await sb.auth.signUp({ email, password:pass, options:{ data:{ full_name:name }, emailRedirectTo: location.href } });
+        if(error) throw error;
+        authMsg('Лист із підтвердженням надіслано на '+email+'. Перевір пошту.','ok');
+        $('#authResend').style.display='inline';
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password:pass });
+        if(error) throw error;
+        // onAuthStateChange handles the rest
+      }
+    }catch(err){
+      const m=(err&&err.message)||'Помилка';
+      authMsg(/confirm|подтвер|not confirmed/i.test(m) ? 'Спершу підтверди email — перевір пошту.' : m, 'err');
+      if(/not confirmed/i.test(m)) $('#authResend').style.display='inline';
+    }finally{ $('#authSubmit').disabled=false; }
+  });
+
+  $('#authForgot').addEventListener('click', async ()=>{
+    const email=$('#authEmail').value.trim();
+    if(!email){ authMsg('Впиши email, і я надішлю посилання для скидання','err'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+    authMsg(error ? error.message : 'Посилання для скидання пароля надіслано на '+email, error?'err':'ok');
+  });
+
+  $('#authResend').addEventListener('click', async ()=>{
+    const email=$('#authEmail').value.trim(); if(!email){ authMsg('Впиши email','err'); return; }
+    const { error } = await sb.auth.resend({ type:'signup', email, options:{ emailRedirectTo: location.href } });
+    authMsg(error ? error.message : 'Лист надіслано ще раз на '+email, error?'err':'ok');
+  });
+
+  $('#logoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+  // settings (name / email)
+  $('#settingsBtn').addEventListener('click', async ()=>{
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user) return;
+    $('#setName').value=(user.user_metadata&&user.user_metadata.full_name)||'';
+    $('#setEmail').value=user.email||'';
+    $('#setHint').textContent='';
+    $('#setModalBack').classList.add('open');
+  });
+  $('#setCancelBtn').addEventListener('click',()=>$('#setModalBack').classList.remove('open'));
+  $('#setModalBack').addEventListener('click',e=>{ if(e.target===$('#setModalBack')) $('#setModalBack').classList.remove('open'); });
+  $('#setSaveBtn').addEventListener('click', async ()=>{
+    const name=$('#setName').value.trim(), email=$('#setEmail').value.trim();
+    const upd={ data:{ full_name:name } };
+    const { data:{ user:cur } } = await sb.auth.getUser();
+    if(email && cur && email!==cur.email) upd.email=email;
+    const { error } = await sb.auth.updateUser(upd);
+    if(error){ $('#setHint').textContent=error.message; return; }
+    $('#setHint').textContent = upd.email ? 'Збережено. На новий email надіслано лист для підтвердження зміни.' : 'Збережено.';
+    const { data:{ user } } = await sb.auth.getUser();
+    fillUserPanel(user);
+    setTimeout(()=>$('#setModalBack').classList.remove('open'), upd.email?1600:600);
+  });
+
+  // react to auth state
+  sb.auth.onAuthStateChange((_evt, session)=>{
+    if(session && session.user){ onSignedIn(session.user); }
+  });
+}
+
+/* ================= BOOT ================= */
+async function boot(){
+  if(DB_ON){
+    $('#authDemoNote').style.display='none';
+    setAuthMode('signin');
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){ await onSignedIn(session.user); }
+    else { showGate(true); }
+  } else {
+    // демо-режим: без бази, показуємо все одразу
+    renderAll();
+  }
+}
+boot();
+
+/* ================= NAV ================= */
+const titles = {
+  overview:['Огляд','Привіт, Андрію — ось твої фінанси за липень 2026'],
+  income:['Доходи','Зарплата та надходження від клієнтів'],
+  expenses:['Витрати','Куди йдуть гроші цього місяця'],
+  analytics:['Аналітика','Порівняння доходів і витрат по роках'],
+  categories:['Категорії','Керуй категоріями доходів і витрат'],
+  settings:['Налаштування','Валюта, тема, Telegram-бот']
+};
+$$('.nav-item').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const p=btn.dataset.page;
+    $$('.nav-item').forEach(b=>b.classList.toggle('active', b===btn));
+    $$('.page').forEach(s=>s.classList.toggle('active', s.dataset.page===p));
+    $('#pageTitle').textContent=titles[p][0];
+    $('#pageSub').textContent=titles[p][1];
+    closeSidebar();
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+
+/* ================= FLOW FILTER ================= */
+$('#flowSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  flowFilter=b.dataset.f;
+  $$('#flowSeg button').forEach(x=>x.classList.toggle('on', x===b));
+  renderFlow('flowSvg', yearly[currentYear], MONTHS.slice(0,yearly[currentYear].length), flowFilter);
+});
+
+/* ================= YEAR SELECT ================= */
+$('#yearSelect').addEventListener('change',(e)=>{
+  currentYear = parseInt(e.target.value,10);
+  const fy=$('#flowYear'); if(fy) fy.textContent=currentYear;
+  const yr=yearly[currentYear]||[];
+  renderFlow('flowSvg', yr, MONTHS.slice(0,yr.length||12), flowFilter);
+  renderExpTrend();
+});
+
+/* ================= MOBILE SIDEBAR ================= */
+function closeSidebar(){$('#sidebar').classList.remove('open');$('#scrim').classList.remove('show');}
+$('#menuBtn').addEventListener('click',()=>{$('#sidebar').classList.add('open');$('#scrim').classList.add('show');});
+$('#scrim').addEventListener('click',closeSidebar);
+
+/* ================= MODAL ================= */
+const catColors = {};
+[...expenseCats, ...expenseCatsExtra, ...incomeCats].forEach(c=>catColors[c.name]=c.color);
+function fillCategories(){
+  const list = modalType==='expense' ? [...expenseCats,...expenseCatsExtra] : incomeCats;
+  $('#fCategory').innerHTML = list.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  refreshSubField(); syncSwitchToTarget();
+}
+function refreshSubField(){
+  const f = modalType==='expense' ? findExpCat($('#fCategory').value) : null;
+  if(f && f.obj.subs){
+    $('#subField').style.display='block';
+    $('#fSubcategory').innerHTML = f.obj.subs.map(s=>`<option value="${esc(s.name)}">${s.name}${s.fixed?' · фікс.':''}</option>`).join('');
+  } else {
+    $('#subField').style.display='none';
+    $('#fSubcategory').innerHTML='';
+  }
+}
+function currentModalTarget(){
+  if(modalType!=='expense') return null;
+  const f=findExpCat($('#fCategory').value); if(!f) return null;
+  if(f.obj.subs){ const sn=$('#fSubcategory').value; const s=f.obj.subs.find(x=>x.name===sn)||f.obj.subs[0]; return {cat:f, sub:s}; }
+  return {cat:f, sub:null};
+}
+let modalFixed=false;
+function updateFixedFieldVisibility(){ $('#fixedField').style.display = modalType==='expense' ? 'block' : 'none'; }
+function setSwitch(on){ modalFixed=on; $('#fixedSwitch').classList.toggle('on',on); $('#fixedSwitch').setAttribute('aria-checked',on); }
+function syncSwitchToTarget(){
+  const t=currentModalTarget();
+  setSwitch(t ? !!(t.sub? t.sub.fixed : t.cat.obj.fixed) : false);
+}
+$('#fixedSwitch').addEventListener('click',()=>setSwitch(!modalFixed));
+$('#fCategory').addEventListener('change',()=>{ refreshSubField(); syncSwitchToTarget(); });
+$('#fSubcategory').addEventListener('change', syncSwitchToTarget);
+
+function openModal(){
+  $('#modalBack').classList.add('open');
+  $('#fDate').value = '2026-07-31';
+  updateFixedFieldVisibility();
+  fillCategories();
+  setTimeout(()=>$('#fAmount').focus(),50);
+}
+function closeModal(){$('#modalBack').classList.remove('open');$('#fAmount').value='';$('#fNote').value='';setSwitch(false);}
+$('#addBtn').addEventListener('click',openModal);
+$('#cancelBtn').addEventListener('click',closeModal);
+$('#modalBack').addEventListener('click',e=>{if(e.target===$('#modalBack'))closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+$('#typeToggle').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  modalType=b.dataset.type;
+  $$('#typeToggle button').forEach(x=>{x.classList.remove('on-exp','on-inc');});
+  b.classList.add(modalType==='expense'?'on-exp':'on-inc');
+  updateFixedFieldVisibility();
+  fillCategories();
+});
+
+$('#saveBtn').addEventListener('click', async ()=>{
+  const amt=parseFloat($('#fAmount').value);
+  if(!amt||amt<=0){$('#fAmount').focus();return;}
+  const catName=$('#fCategory').value;
+  const note=$('#fNote').value||'—';
+  const dateVal=$('#fDate').value || undefined;
+
+  if(DB_ON){
+    // знайти id категорії/підкатегорії
+    let targetId=null;
+    if(modalType==='expense'){
+      const t=currentModalTarget();
+      targetId = t ? (t.sub? t.sub.id : t.cat.obj.id) : null;
+      if(t && t.sub) t.sub.fixed=modalFixed; // (перемикач фіксованої в модалці) — фіксуємо стан підкатегорії
+    } else {
+      const ic=incomeCats.find(c=>c.name===catName); targetId=ic&&ic.id;
+    }
+    $('#saveBtn').disabled=true;
+    const row={ category_id:targetId, type:modalType, amount:Math.abs(amt), note, source:'manual' };
+    if(dateVal) row.occurred_at=dateVal;
+    const { error } = await sb.from('transactions').insert(row);
+    $('#saveBtn').disabled=false;
+    if(error){ alert('Не вдалося зберегти: '+error.message); return; }
+    closeModal();
+    await reload();
+    return;
+  }
+
+  // ---- демо-режим (локально) ----
+  const signed = modalType==='expense' ? -Math.abs(amt) : Math.abs(amt);
+  let subName=null;
+  if(modalType==='expense'){
+    const t=currentModalTarget();
+    if(t){
+      if(t.sub){ subName=t.sub.name; t.sub.value=(t.sub.value||0)+amt; t.sub.fixed=modalFixed; }
+      else { const c=t.cat.obj; c.value=(c.value||0)+amt; c.fixed=modalFixed;
+        if(modalFixed && t.cat.arr===expenseCatsExtra){ expenseCatsExtra.splice(expenseCatsExtra.indexOf(c),1); expenseCats.push(c); } }
+    }
+  } else {
+    if(yearly[PERIOD.year]) yearly[PERIOD.year][PERIOD.month][0]+=amt;
+    const ic=incomeCats.find(c=>c.name===catName); if(ic)ic.value+=amt;
+  }
+  transactions.unshift({d:'31 лип', cat:catName, sub:subName||undefined, color:catColors[catName]||'#7E7A6B', note, amt:signed, type:modalType});
+  renderAll();
+  closeModal();
+});
+
+/* ===== edit category / subcategory (works in Categories AND Expenses) ===== */
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-act]'); if(!btn)return;
+  const act=btn.dataset.act;
+  const card=btn.closest('.cat-card');
+  const catName = btn.dataset.name || (card && card.dataset.name);
+  if(!catName)return;
+  if(act==='editcat') openCatModal({kind:'cat', catName});
+  else if(act==='editsub'){ const row=btn.closest('.sub-row'); if(row) openCatModal({kind:'sub', catName, subName:row.dataset.sub}); }
+  else if(act==='newsub') openCatModal({kind:'newsub', catName});
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeCatModal(); });
+</script>
+</body>
+</html>
