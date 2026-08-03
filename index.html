@@ -214,12 +214,13 @@
   .tx-amt.pos{color:var(--income)}
   .tx-amt.neg{color:var(--ink)}
   th.right,td.right{text-align:right}
-  .tx-del-cell{width:34px;text-align:right;padding-left:0!important}
-  .tx-del{width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;color:var(--faint);opacity:0;transition:.14s}
-  .tx-table tbody tr:hover .tx-del{opacity:1}
-  .tx-del:hover{background:var(--expense-soft);color:var(--expense)}
-  .tx-del svg{width:14px;height:14px}
-  @media(hover:none){ .tx-del{opacity:.6} }
+  .tx-actions-cell{width:64px;text-align:right;white-space:nowrap;padding-left:0!important}
+  .tx-act{width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;color:var(--faint);transition:.14s;vertical-align:middle}
+  .tx-act svg{width:14px;height:14px}
+  .tx-act.tx-edit{border:1px solid var(--border);background:var(--surface)}
+  .tx-act.tx-edit:hover{color:var(--ink);border-color:var(--border-strong)}
+  .tx-act.tx-del:hover{background:var(--expense-soft);color:var(--expense)}
+  .tx-act+.tx-act{margin-left:5px}
 
   /* category bars (expenses page) */
   .catbar-list{display:flex;flex-direction:column;gap:15px;margin-top:6px}
@@ -719,8 +720,8 @@
 <!-- MODAL -->
 <div class="modal-back" id="modalBack">
   <div class="modal" role="dialog" aria-modal="true">
-    <h2>Нова операція</h2>
-    <div class="msub">Так само це робитиме Telegram-бот з твого повідомлення</div>
+    <h2 id="modalTitle">Нова операція</h2>
+    <div class="msub" id="modalSub">Так само це робитиме Telegram-бот з твого повідомлення</div>
     <div class="type-toggle" id="typeToggle">
       <button class="on-exp" data-type="expense">Витрата</button>
       <button data-type="income">Дохід</button>
@@ -1175,9 +1176,14 @@ function txRow(t){
     <td><span class="tx-cat"><i class="dot" style="background:${t.color}"></i>${t.cat}${t.sub?' · '+t.sub:''}</span></td>
     <td class="tx-note">${t.note}</td>
     <td class="tx-amt ${pos?'pos':'neg'}">${sign}${fmt(Math.abs(t.amt))} zł</td>
-    <td class="tx-del-cell"><button class="tx-del" data-txkey="${key}" title="Видалити операцію" aria-label="Видалити">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button></td>
+    <td class="tx-actions-cell">
+      <button class="tx-act tx-edit" data-txedit="${key}" title="Редагувати" aria-label="Редагувати">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.05 2.05 0 0 1 2.9 2.9L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      </button>
+      <button class="tx-act tx-del" data-txkey="${key}" title="Видалити операцію" aria-label="Видалити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </td>
   </tr>`;
 }
 function renderTx(){
@@ -1986,15 +1992,44 @@ $('#fCategory').addEventListener('change',()=>{ applyNewCatUI(); refreshSubField
 $('#fSubcategory').addEventListener('change', syncSwitchToTarget);
 
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function openModal(){
-  $('#modalBack').classList.add('open');
-  $('#fDate').value = todayStr();
+let editingTx=null;
+function setModalType(type){
+  modalType=type;
+  $$('#typeToggle button').forEach(x=>{x.classList.remove('on-exp','on-inc'); if(x.dataset.type===type) x.classList.add(type==='expense'?'on-exp':'on-inc');});
   updateFixedFieldVisibility();
   adaptModalForType();
   fillCategories();
+}
+function openModal(){
+  editingTx=null;
+  $('#modalTitle').textContent='Нова операція';
+  $('#modalSub').textContent='Так само це робитиме Telegram-бот з твого повідомлення';
+  $('#saveBtn').textContent='Додати';
+  $('#modalBack').classList.add('open');
+  $('#fDate').value = todayStr();
+  setModalType('expense');
   setTimeout(()=>$('#fAmount').focus(),50);
 }
-function closeModal(){$('#modalBack').classList.remove('open');$('#fAmount').value='';$('#fNote').value='';$('#fNewCat').value='';setSwitch(false);}
+function openEditModal(t){
+  editingTx=t;
+  $('#modalTitle').textContent='Редагувати операцію';
+  $('#modalSub').textContent='Зміни категорію, суму, дату або нотатку';
+  $('#saveBtn').textContent='Зберегти';
+  $('#modalBack').classList.add('open');
+  setModalType(t.type);                    // виставляє список категорій під тип
+  // категорія
+  const catSel=$('#fCategory');
+  if([...catSel.options].some(o=>o.value===t.cat)) catSel.value=t.cat;
+  applyNewCatUI(); refreshSubField();
+  // підкатегорія
+  if(t.sub){ const ss=$('#fSubcategory'); if([...ss.options].some(o=>o.value===t.sub)) ss.value=t.sub; }
+  syncSwitchToTarget();
+  $('#fAmount').value=Math.abs(t.amt);
+  $('#fNote').value=(t.note && t.note!=='—')?t.note:'';
+  $('#fDate').value=t.occurred_at || todayStr();
+  setTimeout(()=>$('#fAmount').focus(),50);
+}
+function closeModal(){editingTx=null;$('#modalBack').classList.remove('open');$('#fAmount').value='';$('#fNote').value='';$('#fNewCat').value='';setSwitch(false);}
 $('#addBtn').addEventListener('click',openModal);
 $('#cancelBtn').addEventListener('click',closeModal);
 $('#modalBack').addEventListener('click',e=>{if(e.target===$('#modalBack'))closeModal();});
@@ -2002,12 +2037,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 $('#typeToggle').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b)return;
-  modalType=b.dataset.type;
-  $$('#typeToggle button').forEach(x=>{x.classList.remove('on-exp','on-inc');});
-  b.classList.add(modalType==='expense'?'on-exp':'on-inc');
-  updateFixedFieldVisibility();
-  adaptModalForType();
-  fillCategories();
+  setModalType(b.dataset.type);
 });
 
 $('#saveBtn').addEventListener('click', async ()=>{
@@ -2021,6 +2051,38 @@ $('#saveBtn').addEventListener('click', async ()=>{
   const dateVal=$('#fDate').value || undefined;
   const palette=['#2F7A55','#B8503A','#5B7A8C','#8A6D9C','#4E8A82','#C89B3C','#A9744F','#7E9A5E','#B58A5E','#9A7CA0','#C0857A','#5E8F86'];
   const pickColor=()=>palette[Math.floor(Math.random()*palette.length)];
+
+  /* ===== РЕЖИМ РЕДАГУВАННЯ ===== */
+  if(editingTx){
+    if(creatingNew){ alert('Під час редагування обери наявну категорію.'); return; }
+    // визначити цільову категорію/підкатегорію
+    let targetId=null, targetName=catName, subName=null, color=catColors[catName]||'#7E7A6B';
+    if(modalType==='expense'){
+      const t=currentModalTarget();
+      if(t){ targetId = t.sub? t.sub.id : t.cat.obj.id; subName = t.sub? t.sub.name : null; color=t.cat.obj.color||color; }
+    } else {
+      const ic=incomeCats.find(c=>c.name===catName); targetId=ic&&ic.id; color=(ic&&ic.color)||color;
+    }
+    if(DB_ON && editingTx.id){
+      $('#saveBtn').disabled=true;
+      const patch={ category_id:targetId, type:modalType, amount:Math.abs(amt), note };
+      if(dateVal) patch.occurred_at=dateVal;
+      const { error } = await sb.from('transactions').update(patch).eq('id', editingTx.id);
+      $('#saveBtn').disabled=false;
+      if(error){ alert('Не вдалося зберегти: '+error.message); return; }
+      closeModal();
+      await reload();
+      return;
+    }
+    // демо / без id
+    editingTx.cat=targetName; editingTx.sub=subName||undefined; editingTx.color=color;
+    editingTx.note=note; editingTx.type=modalType;
+    editingTx.amt=(modalType==='expense'?-1:1)*Math.abs(amt);
+    if(dateVal) editingTx.occurred_at=dateVal;
+    renderAll();
+    closeModal();
+    return;
+  }
 
   if(DB_ON){
     $('#saveBtn').disabled=true;
@@ -2098,6 +2160,16 @@ document.addEventListener('click', async (e)=>{
   const idx = transactions.indexOf(t);
   if(idx>-1) transactions.splice(idx,1);
   renderAll();
+});
+
+/* ===== edit a single transaction ===== */
+document.addEventListener('click',(e)=>{
+  const btn=e.target.closest('.tx-edit'); if(!btn)return;
+  const key=btn.dataset.txedit||'';
+  const t = key.startsWith('id:')
+    ? transactions.find(x=>String(x.id)===key.slice(3))
+    : transactions.find(x=>String(x._k)===key.slice(2));
+  if(t) openEditModal(t);
 });
 
 /* ===== edit category / subcategory (works in Categories AND Expenses) ===== */
