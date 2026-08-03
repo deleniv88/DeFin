@@ -209,6 +209,7 @@
   .tx-table tbody tr:hover{background:var(--surface-2)}
   .tx-cat{display:inline-flex;align-items:center;gap:9px;font-weight:500}
   .tx-note{color:var(--muted)}
+  .tx-client{font-weight:500;color:var(--ink)}
   .tx-date{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
   .tx-amt{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
   .tx-amt.pos{color:var(--income)}
@@ -608,7 +609,7 @@
       <div class="card">
         <div class="card-head"><div class="card-title">Доходи — операції</div></div>
         <table class="tx-table">
-          <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
+          <thead><tr><th>Дата</th><th>Категорія</th><th>Клієнт</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="incTxBody"></tbody>
         </table>
       </div>
@@ -754,6 +755,10 @@
       <label id="fDateLabel">Дата</label>
       <input type="date" id="fDate">
     </div>
+    <div class="field" id="clientField" style="display:none">
+      <label>Клієнт</label>
+      <input type="text" id="fClient" placeholder="напр. K&amp;K, Wildix, Христина">
+    </div>
     <div class="field">
       <label id="fNoteLabel">Нотатка</label>
       <input type="text" id="fNote" placeholder="напр. Biedronka, пальне…">
@@ -786,7 +791,7 @@
       <div class="hint">Стала сума додається автоматично щомісяця й потрапляє в блок «Фіксовані».</div>
     </div>
     <div class="field amount-in" id="cAmountField">
-      <label>Сума на місяць</label>
+      <label id="cAmountLabel">Сума на місяць</label>
       <input type="number" id="cAmount" placeholder="0" step="0.01" inputmode="decimal">
       <span class="cur">zł</span>
     </div>
@@ -905,11 +910,11 @@ const incomeCats = [
 
 let transactions = [
   {d:'31 лип', cat:'Кафе', color:'#A9744F', note:'Кава з клієнтом', amt:-38, type:'expense'},
-  {d:'30 лип', cat:'Клієнти — сайти', color:'#4E8A82', note:'Wildix, етап 2', amt:4200, type:'income'},
+  {d:'30 лип', cat:'Клієнти — сайти', color:'#4E8A82', client:'Wildix', note:'Етап 2 — інтеграція', amt:4200, type:'income'},
   {d:'29 лип', cat:'Їжа', color:'#2F7A55', note:'Biedronka', amt:-214, type:'expense'},
   {d:'28 лип', cat:'Авто', color:'#B8503A', note:'Пальне', amt:-280, type:'expense'},
   {d:'27 лип', cat:'Підписки', color:'#927C9A', note:'Figma + хостинг', amt:-190, type:'expense'},
-  {d:'26 лип', cat:'Клієнти — дизайн', color:'#5B7A8C', note:'K&K, лендинг', amt:2000, type:'income'},
+  {d:'26 лип', cat:'Клієнти — дизайн', color:'#5B7A8C', client:'K&K', note:'Лендинг', amt:2000, type:'income'},
   {d:'25 лип', cat:'Зарплата', color:'#2F7A55', note:'Місячна', amt:9000, type:'income'},
   {d:'24 лип', cat:'Одяг', color:'#C57B7B', note:'Zalando', amt:-320, type:'expense'},
   {d:'23 лип', cat:'Здоров\u2019я', color:'#B58A5E', note:'Аптека', amt:-85, type:'expense'},
@@ -1167,13 +1172,15 @@ function renderDonut(svgId, legendId, totalId, cats){
 }
 
 /* ============ TX TABLE ============ */
-function txRow(t){
+function txRow(t, withClient){
   const pos = t.amt>0;
   const sign = pos ? '+' : '−';
   const key = t.id ? ('id:'+t.id) : ('k:'+t._k);
+  const clientCell = withClient ? `<td class="tx-client">${t.client||'—'}</td>` : '';
   return `<tr>
     <td class="tx-date">${t.d}</td>
     <td><span class="tx-cat"><i class="dot" style="background:${t.color}"></i>${t.cat}${t.sub?' · '+t.sub:''}</span></td>
+    ${clientCell}
     <td class="tx-note">${t.note}</td>
     <td class="tx-amt ${pos?'pos':'neg'}">${sign}${fmt(Math.abs(t.amt))} zł</td>
     <td class="tx-actions-cell">
@@ -1188,9 +1195,9 @@ function txRow(t){
 }
 function renderTx(){
   transactions.forEach((t,i)=>{ if(t._k==null) t._k=i+'_'+(t.cat||'')+'_'+(t.amt||0); });
-  $('#txBody').innerHTML = transactions.map(txRow).join('');
-  $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income').map(txRow).join('');
-  $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense').map(txRow).join('');
+  $('#txBody').innerHTML = transactions.map(t=>txRow(t)).join('');
+  $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income').map(t=>txRow(t,true)).join('');
+  $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense').map(t=>txRow(t)).join('');
 }
 
 /* ============ CATEGORY BARS ============ */
@@ -1364,7 +1371,16 @@ function reRenderCats(){
 /* ============ CATEGORY EDIT MODAL ============ */
 const EMOJIS = ['🏠','🏥','🧾','🔌','💡','🚌','🌐','📱','☁️','🛒','🚗','🧹','☕','👕','🎬','💊','💳','📦','🎁','🎂','💼','💻','🎨','🍽️','🏋️','✈️','🎓','⛽','🐶','💧','📚','🎮','💅','🧸','🚕','🏦','🎧','🍺','💇','🅿️'];
 let catEdit=null, catEditFixed=false;
-function setCatSwitch(on){ catEditFixed=on; $('#cFixedSwitch').classList.toggle('on',on); $('#cFixedSwitch').setAttribute('aria-checked',on); $('#cAmountField').style.display = on ? 'block':'none'; }
+function updateAmountLabel(){
+  const lbl=$('#cAmountLabel'); if(!lbl)return;
+  lbl.textContent = catEditFixed ? 'Сума на місяць (план)' : 'Сума за цей місяць';
+}
+function setCatSwitch(on){
+  catEditFixed=on;
+  $('#cFixedSwitch').classList.toggle('on',on);
+  $('#cFixedSwitch').setAttribute('aria-checked',on);
+  updateAmountLabel();
+}
 function renderEmojiGrid(sel){ $('#emojiGrid').innerHTML = EMOJIS.map(e=>`<button type="button" data-emoji="${e}" class="${e===sel?'sel':''}">${e}</button>`).join(''); }
 $('#cFixedSwitch').addEventListener('click',()=>setCatSwitch(!catEditFixed));
 $('#emojiGrid').addEventListener('click',e=>{
@@ -1396,7 +1412,12 @@ function openCatModal(opt){
   renderEmojiGrid(catEdit.icon);
   $('#cFixedField').style.display = allowFixed ? 'block':'none';
   setCatSwitch(allowFixed ? fixed : false);
-  if(!allowFixed){ $('#cAmountField').style.display='none'; }
+  // поле суми показуємо завжди, коли суму можна редагувати:
+  // для витратної категорії БЕЗ підкатегорій, для підкатегорії, і для нової підкатегорії.
+  // ховаємо лише для доходів і для батьківської категорії з підкатегоріями (там сума = сума дочірніх).
+  const showAmount = allowFixed || opt.kind==='sub' || opt.kind==='newsub';
+  $('#cAmountField').style.display = showAmount ? 'block':'none';
+  updateAmountLabel();
   $('#cAmount').value = amount;
   $('#delConfirm').style.display='none';
   $('#catDeleteBtn').style.display = (opt.kind==='newsub') ? 'none' : 'inline-flex';
@@ -1485,12 +1506,39 @@ async function performDelete(o, mode){
   closeCatModal();
 }
 
+// Встановити суму змінної категорії/підкатегорії за поточний період через операцію-корекцію.
+// Замінює попередню корекцію (source='adjust') за цей місяць, не чіпаючи реальні операції.
+async function setPeriodAmountDB(categoryId, amount){
+  const y=PERIOD.year, m=PERIOD.month;
+  const wholeYear = m===-1;
+  const start = wholeYear ? `${y}-01-01` : `${y}-${String(m+1).padStart(2,'0')}-01`;
+  const endD  = wholeYear ? new Date(y,12,0) : new Date(y,m+1,0);
+  const end   = `${endD.getFullYear()}-${String(endD.getMonth()+1).padStart(2,'0')}-${String(endD.getDate()).padStart(2,'0')}`;
+  // прибрати попередні корекції за період
+  await sb.from('transactions').delete()
+    .eq('category_id', categoryId).eq('source','adjust')
+    .gte('occurred_at', start).lte('occurred_at', end);
+  // скільки вже є реальних операцій за період (без корекцій)
+  const { data: real } = await sb.from('transactions').select('amount,source')
+    .eq('category_id', categoryId).gte('occurred_at', start).lte('occurred_at', end);
+  const realSum = (real||[]).filter(r=>r.source!=='adjust').reduce((s,r)=>s+Number(r.amount),0);
+  const diff = amount - realSum;
+  if(diff > 0.001){
+    const occ = wholeYear ? `${y}-12-01` : `${y}-${String(m+1).padStart(2,'0')}-15`;
+    await sb.from('transactions').insert({
+      category_id: categoryId, type:'expense', amount: diff,
+      note: 'корекція', occurred_at: occ, source:'adjust'
+    });
+  }
+}
+
 $('#catSaveBtn').addEventListener('click', async ()=>{
   if(!catEdit)return;
   const o=catEdit;
   const newName=($('#cName').value||'').trim();
   const icon=o.icon||'';
   const amt=parseFloat($('#cAmount').value);
+  const hasAmt=!isNaN(amt);
 
   if(DB_ON){
     $('#catSaveBtn').disabled=true;
@@ -1499,13 +1547,24 @@ $('#catSaveBtn').addEventListener('click', async ()=>{
         const inc=incomeCats.find(c=>c.name===o.catName);
         const target = inc || findExpCat(o.catName).obj;
         const patch={ icon }; if(newName) patch.name=newName;
-        if(!inc && !target.subs){ patch.is_fixed=catEditFixed; if(catEditFixed && amt>0) patch.monthly_amount=amt; }
+        if(!inc && !target.subs){
+          patch.is_fixed=catEditFixed;
+          if(catEditFixed && hasAmt) patch.monthly_amount=amt;
+        }
         await sb.from('categories').update(patch).eq('id', target.id);
+        // змінна категорія без підкатегорій: записати суму за місяць як операцію
+        if(!inc && !target.subs && !catEditFixed && hasAmt){
+          await setPeriodAmountDB(target.id, amt);
+        }
       } else if(o.kind==='sub'){
         const s=findSub(o.catName, o.subName).sub;
         const patch={ icon, is_fixed:catEditFixed }; if(newName) patch.name=newName;
-        if(catEditFixed && amt>0) patch.monthly_amount=amt;
+        if(catEditFixed && hasAmt) patch.monthly_amount=amt;
         await sb.from('categories').update(patch).eq('id', s.id);
+        // змінна підкатегорія: записати суму за місяць як операцію
+        if(!catEditFixed && hasAmt){
+          await setPeriodAmountDB(s.id, amt);
+        }
       } else if(o.kind==='newsub'){
         if(!newName){ $('#cName').focus(); $('#catSaveBtn').disabled=false; return; }
         const parent=findExpCat(o.catName).obj;
@@ -1514,8 +1573,13 @@ $('#catSaveBtn').addEventListener('click', async ()=>{
         const { data:{ user } } = await sb.auth.getUser();
         const uid = user && user.id;
         if(!kids.length){ rows.push({ user_id:uid, name: parent.fixed?'Стала частина':'Основне', icon:parent.icon, color:parent.color, type:'expense', parent_id:parent.id, is_fixed:!!parent.fixed, monthly_amount:parent.plan||parent.value||0, sort:1 }); }
-        rows.push({ user_id:uid, name:newName, icon:icon||'▫️', color:parent.color, type:'expense', parent_id:parent.id, is_fixed:catEditFixed, monthly_amount:(catEditFixed&&amt>0)?amt:0, sort:kids.length+2 });
-        await sb.from('categories').insert(rows);
+        rows.push({ user_id:uid, name:newName, icon:icon||'▫️', color:parent.color, type:'expense', parent_id:parent.id, is_fixed:catEditFixed, monthly_amount:(catEditFixed&&hasAmt)?amt:0, sort:kids.length+2 });
+        const { data:insNew } = await sb.from('categories').insert(rows).select('id,is_fixed');
+        // якщо нова підкатегорія змінна і задано суму — записати як операцію
+        if(!catEditFixed && hasAmt && insNew && insNew.length){
+          const created=insNew[insNew.length-1];
+          if(created) await setPeriodAmountDB(created.id, amt);
+        }
       }
     }catch(err){ alert('Не вдалося зберегти: '+(err.message||err)); $('#catSaveBtn').disabled=false; return; }
     $('#catSaveBtn').disabled=false;
@@ -1533,19 +1597,20 @@ $('#catSaveBtn').addEventListener('click', async ()=>{
     target.icon=icon;
     if(!inc && !target.subs){
       target.fixed=catEditFixed;
-      if(catEditFixed){ if(amt>0){ target.value=amt; target.ask=false; }
+      if(hasAmt){ target.value=amt; target.ask=false; }
+      if(catEditFixed){
         const f=findExpCat(target.name); if(f && f.arr===expenseCatsExtra){ expenseCatsExtra.splice(expenseCatsExtra.indexOf(target),1); expenseCats.push(target); } }
     }
   } else if(o.kind==='sub'){
     const s=findSub(o.catName, o.subName).sub; const oldSub=s.name;
     if(newName){ s.name=newName; transactions.forEach(t=>{if(t.cat===o.catName && t.sub===oldSub)t.sub=newName;}); }
     s.icon=icon; s.fixed=catEditFixed;
-    if(catEditFixed && amt>0) s.value=amt;
+    if(hasAmt) s.value=amt;
   } else if(o.kind==='newsub'){
     if(!newName){ $('#cName').focus(); return; }
     const c=findExpCat(o.catName).obj;
     if(!c.subs){ c.subs=[{name:c.fixed?'Стала частина':'Основне', icon:c.icon, value:c.value||0, fixed:!!c.fixed}]; }
-    c.subs.push({name:newName, icon:icon||'▫️', value:(catEditFixed&&amt>0)?amt:0, fixed:catEditFixed});
+    c.subs.push({name:newName, icon:icon||'▫️', value:hasAmt?amt:0, fixed:catEditFixed});
   }
   renderAll();
   closeCatModal();
@@ -1700,9 +1765,9 @@ function applyPeriod(){
   expenseCatsExtra.length=0;
   incomeCats.length=0; inc.forEach(x=>inc && incomeCats.push(x));
 
-  // операції — лише за обраний період, для таблиць
+  // операції — лише за обраний період, для таблиць (корекції не показуємо)
   transactions.length=0;
-  txs.filter(inPeriod).forEach(t=>{
+  txs.filter(t=>inPeriod(t) && t.source!=='adjust').forEach(t=>{
     const c=byId[t.category_id]; if(!c)return;
     let parent=c, subName=null;
     if(c.parent_id){ parent=byId[c.parent_id]||c; subName=c.name; }
@@ -1710,7 +1775,7 @@ function applyPeriod(){
     transactions.push({ id:t.id, category_id:t.category_id,
       d:d.getDate()+' '+MONTHS[d.getMonth()].toLowerCase(),
       cat:parent.name, sub:subName||undefined, color:parent.color||'#7E7A6B',
-      note:t.note||'—', amt: t.type==='expense'? -Number(t.amount): Number(t.amount),
+      note:t.note||'—', client:t.client||'', amt: t.type==='expense'? -Number(t.amount): Number(t.amount),
       type:t.type, occurred_at:t.occurred_at });
   });
 
@@ -1973,10 +2038,13 @@ let modalFixed=false;
 function updateFixedFieldVisibility(){ $('#fixedField').style.display = modalType==='expense' ? 'block' : 'none'; }
 function adaptModalForType(){
   if(modalType==='income'){
+    $('#clientField').style.display='block';
     $('#fDateLabel').textContent='Дата оплати';
-    $('#fNoteLabel').textContent='Клієнт / що зроблено';
-    $('#fNote').placeholder='напр. K&K — лендинг';
+    $('#fNoteLabel').textContent='Що зроблено';
+    $('#fNote').placeholder='напр. лендинг, статті + сторінки';
   } else {
+    $('#clientField').style.display='none';
+    $('#fClient').value='';
     $('#fDateLabel').textContent='Дата';
     $('#fNoteLabel').textContent='Нотатка';
     $('#fNote').placeholder='напр. Biedronka, пальне…';
@@ -2026,10 +2094,11 @@ function openEditModal(t){
   syncSwitchToTarget();
   $('#fAmount').value=Math.abs(t.amt);
   $('#fNote').value=(t.note && t.note!=='—')?t.note:'';
+  $('#fClient').value=t.client||'';
   $('#fDate').value=t.occurred_at || todayStr();
   setTimeout(()=>$('#fAmount').focus(),50);
 }
-function closeModal(){editingTx=null;$('#modalBack').classList.remove('open');$('#fAmount').value='';$('#fNote').value='';$('#fNewCat').value='';setSwitch(false);}
+function closeModal(){editingTx=null;$('#modalBack').classList.remove('open');$('#fAmount').value='';$('#fNote').value='';$('#fNewCat').value='';$('#fClient').value='';setSwitch(false);}
 $('#addBtn').addEventListener('click',openModal);
 $('#cancelBtn').addEventListener('click',closeModal);
 $('#modalBack').addEventListener('click',e=>{if(e.target===$('#modalBack'))closeModal();});
@@ -2048,6 +2117,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
   if(creatingNew && !newCatName){ $('#fNewCat').focus(); return; }
   const catName = creatingNew ? newCatName : $('#fCategory').value;
   const note=$('#fNote').value||'—';
+  const client = modalType==='income' ? ($('#fClient').value||'').trim() : '';
   const dateVal=$('#fDate').value || undefined;
   const palette=['#2F7A55','#B8503A','#5B7A8C','#8A6D9C','#4E8A82','#C89B3C','#A9744F','#7E9A5E','#B58A5E','#9A7CA0','#C0857A','#5E8F86'];
   const pickColor=()=>palette[Math.floor(Math.random()*palette.length)];
@@ -2065,7 +2135,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
     }
     if(DB_ON && editingTx.id){
       $('#saveBtn').disabled=true;
-      const patch={ category_id:targetId, type:modalType, amount:Math.abs(amt), note };
+      const patch={ category_id:targetId, type:modalType, amount:Math.abs(amt), note, client };
       if(dateVal) patch.occurred_at=dateVal;
       const { error } = await sb.from('transactions').update(patch).eq('id', editingTx.id);
       $('#saveBtn').disabled=false;
@@ -2076,7 +2146,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
     }
     // демо / без id
     editingTx.cat=targetName; editingTx.sub=subName||undefined; editingTx.color=color;
-    editingTx.note=note; editingTx.type=modalType;
+    editingTx.note=note; editingTx.client=client; editingTx.type=modalType;
     editingTx.amt=(modalType==='expense'?-1:1)*Math.abs(amt);
     if(dateVal) editingTx.occurred_at=dateVal;
     renderAll();
@@ -2103,7 +2173,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
       } else {
         const ic=incomeCats.find(c=>c.name===catName); targetId=ic&&ic.id;
       }
-      const row={ category_id:targetId, type:modalType, amount:Math.abs(amt), note, source:'manual' };
+      const row={ category_id:targetId, type:modalType, amount:Math.abs(amt), note, client, source:'manual' };
       if(dateVal) row.occurred_at=dateVal;
       const { error } = await sb.from('transactions').insert(row);
       if(error) throw error;
@@ -2133,7 +2203,7 @@ $('#saveBtn').addEventListener('click', async ()=>{
     if(yearly[PERIOD.year] && PERIOD.month>=0) yearly[PERIOD.year][PERIOD.month][0]+=amt;
     const ic=incomeCats.find(c=>c.name===catName); if(ic)ic.value+=amt;
   }
-  transactions.unshift({d:'31 лип', cat:catName, sub:subName||undefined, color:catColors[catName]||'#7E7A6B', note, amt:signed, type:modalType});
+  transactions.unshift({d:'31 лип', cat:catName, sub:subName||undefined, color:catColors[catName]||'#7E7A6B', note, client, amt:signed, type:modalType});
   renderAll();
   closeModal();
 });
