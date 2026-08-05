@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Потік — особисті фінанси</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,6 +51,8 @@
     line-height:1.45;
     -webkit-font-smoothing:antialiased;
     font-feature-settings:"cv05","cv08";
+    touch-action:pan-x pan-y;
+    -webkit-text-size-adjust:100%;
   }
   .num{font-family:var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
@@ -415,6 +417,7 @@
     .cat-grid{grid-template-columns:repeat(2,1fr)}
   }
   @media(max-width:760px){
+    input,textarea,select{font-size:16px}
     .shell{grid-template-columns:1fr}
     .sidebar{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);transition:transform .25s;width:264px;box-shadow:var(--shadow-lg)}
     .sidebar.open{transform:none}
@@ -939,6 +942,20 @@ let modalType = 'expense';
 /* ================= HELPERS ================= */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
+
+/* заборонити масштабування на iOS (де user-scalable=no ігнорується) */
+document.addEventListener('gesturestart', e=>e.preventDefault());
+document.addEventListener('gesturechange', e=>e.preventDefault());
+document.addEventListener('gestureend', e=>e.preventDefault());
+let _lastTouchEnd=0;
+document.addEventListener('touchend', e=>{
+  const now=Date.now();
+  if(now-_lastTouchEnd<=300){ e.preventDefault(); }
+  _lastTouchEnd=now;
+}, {passive:false});
+document.addEventListener('touchmove', e=>{
+  if(e.touches && e.touches.length>1){ e.preventDefault(); }
+}, {passive:false});
 
 function yearTotals(y){
   const d = yearly[y];
