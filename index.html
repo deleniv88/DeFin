@@ -417,22 +417,58 @@
     .cat-grid{grid-template-columns:repeat(2,1fr)}
   }
   @media(max-width:760px){
+    html,body{overflow-x:hidden;max-width:100%}
     input,textarea,select{font-size:16px}
-    .shell{grid-template-columns:1fr}
+    .shell{grid-template-columns:1fr;overflow-x:hidden}
     .sidebar{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);transition:transform .25s;width:264px;box-shadow:var(--shadow-lg)}
     .sidebar.open{transform:none}
-    .main{padding:18px 16px 40px}
+    .main{padding:16px 14px 40px;max-width:100%;overflow-x:hidden}
     .menu-btn{display:inline-grid;place-items:center;width:40px;height:40px;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
     .menu-btn svg{width:20px;height:20px}
     .scrim{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:39;display:none}
     .scrim.show{display:block}
-    .catbar{grid-template-columns:110px 1fr auto;gap:10px}
-    .catbar .nm{font-size:12.5px}
-    .cat-grid{grid-template-columns:1fr}
+
+    /* усі блоки — в один стовпчик, без горизонтального скролу */
+    .grid-2,.grid-cats,.set-grid,.year-grid{grid-template-columns:1fr!important}
+    .stats,#incStats,#expStats{grid-template-columns:1fr!important}
+    .cat-grid{grid-template-columns:1fr!important}
+    .card{min-width:0}
+    .card *{min-width:0}
+
+    /* картки-суми: горизонтальний скрол на випадок трьох поспіль (доходи/витрати) */
+    #incStats,#expStats{
+      display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+      scroll-snap-type:x mandatory;padding-bottom:4px;
+    }
+    #incStats::-webkit-scrollbar,#expStats::-webkit-scrollbar{display:none}
+    #incStats .stat,#expStats .stat{flex:0 0 78%;scroll-snap-align:start}
+
+    /* рядки категорій: назва | сума | олівець в один рядок, без переносу */
+    .catbar{grid-template-columns:1fr auto auto;gap:10px}
+    .catbar .track{display:none}                 /* смужку ховаємо — вона з'їдає ширину */
+    .catbar .nm{font-size:13px}
+    .catbar .nm .lbl{white-space:normal;line-height:1.2}
+    .catbar .vl{font-size:13px;white-space:nowrap}
+    .catbar .bar-edit{margin-left:2px}
+    .subbar{grid-template-columns:1fr auto auto;gap:10px;padding-left:12px}
+    .subbar .track{display:none}
+    .subbar .vl{white-space:nowrap}
+
+    /* таблиці операцій: дозволяємо горизонтальний скрол всередині картки */
+    .tx-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .tx-scroll .tx-table{min-width:520px}
+    .tx-table th,.tx-table td{white-space:nowrap}
+    .tx-note{white-space:normal;min-width:120px}
+
+    /* графіки-свічки не тиснемо занадто */
+    .bars-svg{min-height:150px}
   }
   @media(max-width:440px){
-    .stats{grid-template-columns:1fr}
     .hello h1{font-size:22px}
+    .hello p{font-size:12.5px}
+    .hello{max-width:100%}
+    .hello p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:88vw}
+    #incStats .stat,#expStats .stat{flex:0 0 82%}
   }
   @media(prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important}
@@ -586,10 +622,10 @@
         <div class="card-head">
           <div class="card-title">Останні операції</div>
         </div>
-        <table class="tx-table">
+        <div class="tx-scroll"><table class="tx-table">
           <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="txBody"></tbody>
-        </table>
+        </table></div>
       </div>
     </section>
 
@@ -611,10 +647,10 @@
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Доходи — операції</div></div>
-        <table class="tx-table">
+        <div class="tx-scroll"><table class="tx-table">
           <thead><tr><th>Дата</th><th>Категорія</th><th>Клієнт</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="incTxBody"></tbody>
-        </table>
+        </table></div>
       </div>
     </section>
 
@@ -643,10 +679,10 @@
         </div>
         <div class="card">
           <div class="card-head"><div class="card-title">Витрати — операції</div></div>
-          <table class="tx-table">
+          <div class="tx-scroll"><table class="tx-table">
             <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
             <tbody id="expTxBody"></tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </section>
