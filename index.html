@@ -204,6 +204,12 @@
 
   /* transactions */
   .tx-table{width:100%;border-collapse:collapse}
+  .day-filter{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap}
+  .day-filter input[type=date]{border:1px solid var(--border);border-radius:9px;padding:6px 9px;font-family:inherit;font-size:12.5px;color:var(--ink);background:var(--surface-2);cursor:pointer}
+  .day-filter input[type=date]:focus{outline:none;border-color:var(--accent)}
+  .day-filter .df-dash{color:var(--faint);font-size:12px}
+  .day-filter .df-clear{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:12px;display:inline-grid;place-items:center}
+  .day-filter .df-clear:hover{background:var(--expense-soft);color:var(--expense);border-color:rgba(184,80,58,.3)}
   .tx-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:0 8px 12px;border-bottom:1px solid var(--border)}
   .tx-table td{padding:13px 8px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:middle}
   .tx-table tr:last-child td{border-bottom:none}
@@ -646,7 +652,15 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><div class="card-title">Доходи — операції</div></div>
+        <div class="card-head">
+          <div class="card-title">Доходи — операції</div>
+          <div class="day-filter" id="incDayFilter">
+            <input type="date" class="df-from" aria-label="Від">
+            <span class="df-dash">–</span>
+            <input type="date" class="df-to" aria-label="До">
+            <button class="df-clear" title="Скинути" style="display:none">✕</button>
+          </div>
+        </div>
         <div class="tx-scroll"><table class="tx-table">
           <thead><tr><th>Дата</th><th>Категорія</th><th>Клієнт</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
           <tbody id="incTxBody"></tbody>
@@ -678,7 +692,15 @@
           <div class="catbar-list" id="expBars"></div>
         </div>
         <div class="card">
-          <div class="card-head"><div class="card-title">Витрати — операції</div></div>
+          <div class="card-head">
+            <div class="card-title">Витрати — операції</div>
+            <div class="day-filter" id="expDayFilter">
+              <input type="date" class="df-from" aria-label="Від">
+              <span class="df-dash">–</span>
+              <input type="date" class="df-to" aria-label="До">
+              <button class="df-clear" title="Скинути" style="display:none">✕</button>
+            </div>
+          </div>
           <div class="tx-scroll"><table class="tx-table">
             <thead><tr><th>Дата</th><th>Категорія</th><th>Нотатка</th><th class="right">Сума</th><th></th></tr></thead>
             <tbody id="expTxBody"></tbody>
@@ -1252,11 +1274,20 @@ function txRow(t, withClient){
     </td>
   </tr>`;
 }
+const dayFilter={inc:{from:'',to:''}, exp:{from:'',to:''}};
+function inDayRange(t, f){
+  if(!f.from && !f.to) return true;
+  const d = t.occurred_at || '';
+  if(!d) return true;                 // демо-рядки без дати не ховаємо
+  if(f.from && d < f.from) return false;
+  if(f.to && d > f.to) return false;
+  return true;
+}
 function renderTx(){
   transactions.forEach((t,i)=>{ if(t._k==null) t._k=i+'_'+(t.cat||'')+'_'+(t.amt||0); });
   $('#txBody').innerHTML = transactions.map(t=>txRow(t)).join('');
-  $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income').map(t=>txRow(t,true)).join('');
-  $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense').map(t=>txRow(t)).join('');
+  $('#incTxBody').innerHTML = transactions.filter(t=>t.type==='income' && inDayRange(t,dayFilter.inc)).map(t=>txRow(t,true)).join('');
+  $('#expTxBody').innerHTML = transactions.filter(t=>t.type==='expense' && inDayRange(t,dayFilter.exp)).map(t=>txRow(t)).join('');
 }
 
 /* ============ CATEGORY BARS ============ */
@@ -2054,6 +2085,23 @@ $('#monthSelect').addEventListener('change',(e)=>{
   PERIOD.month = parseInt(e.target.value,10);
   onPeriodChange();
 });
+
+/* ================= ФІЛЬТР ПО ДАТАХ (таблиці операцій) ================= */
+function setupDayFilter(wrapId, key){
+  const wrap=$('#'+wrapId); if(!wrap)return;
+  const from=wrap.querySelector('.df-from'), to=wrap.querySelector('.df-to'), clr=wrap.querySelector('.df-clear');
+  const apply=()=>{
+    dayFilter[key].from=from.value||'';
+    dayFilter[key].to=to.value||'';
+    clr.style.display=(from.value||to.value)?'inline-grid':'none';
+    renderTx();
+  };
+  from.addEventListener('change',apply);
+  to.addEventListener('change',apply);
+  clr.addEventListener('click',()=>{ from.value=''; to.value=''; apply(); });
+}
+setupDayFilter('incDayFilter','inc');
+setupDayFilter('expDayFilter','exp');
 
 /* ================= MOBILE SIDEBAR ================= */
 function closeSidebar(){$('#sidebar').classList.remove('open');$('#scrim').classList.remove('show');}
