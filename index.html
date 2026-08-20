@@ -676,7 +676,6 @@
             <div class="card-sub" id="netPanelIncSub">Липень 2026</div>
           </div>
         </div>
-        <div class="split-bar" id="incSplitBar" style="margin-top:6px"></div>
         <div class="net-list" id="netPanelInc"></div>
       </div>
 
@@ -1146,14 +1145,6 @@ function renderNetPanel(){
        <div class="net-row"><span class="k"><i class="dot" style="background:#5B7A8C;margin-right:7px"></i>Дохід дружини</span><span class="v">${fmt(b.incOther)} zł</span></div>
        <div class="net-row sub"><span class="k">− ZUS / PIT (мої)</span><span class="v neg">−${fmt(b.taxes)} zł</span></div>
        <div class="net-row total"><span class="k">Чистий мій дохід</span><span class="v ${b.net>=0?'pos':'neg'}">${fmt(b.net)} zł</span></div>`;
-    const bar=$('#incSplitBar');
-    if(bar){
-      const tot=b.incAll||1;
-      const mp=Math.round(b.incMine/tot*100), op=100-mp;
-      bar.innerHTML =
-        `<div class="seg-mine" style="flex:0 0 ${mp}%">${mp>10?mp+'%':''}</div>`+
-        `<div class="seg-other" style="flex:0 0 ${op}%">${op>10?op+'%':''}</div>`;
-    }
   }
 }
 
