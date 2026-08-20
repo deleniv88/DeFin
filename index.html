@@ -169,6 +169,8 @@
   .split-card .card-title{font-family:var(--display);font-size:16px;font-weight:600}
   .split-bar{display:flex;height:34px;border-radius:11px;overflow:hidden;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border)}
   .split-bar .seg-fx{background:var(--grad-brand)}
+  .split-bar .seg-mine{background:var(--grad-income)}
+  .split-bar .seg-other{background:linear-gradient(180deg,#7C99AB,#5B7A8C)}
   .split-bar .seg-var{background:var(--grad-expense)}
   .split-bar>div{display:grid;place-items:center;color:#fff;font-family:var(--display);font-size:12px;font-weight:600;min-width:0;transition:flex-basis .4s ease}
   .split-legend{display:flex;flex-direction:column;gap:10px;margin-top:15px}
@@ -666,6 +668,18 @@
     <!-- ============ INCOME ============ -->
     <section class="page" data-page="income">
       <div class="stats" style="grid-template-columns:repeat(3,1fr)" id="incStats"></div>
+
+      <div class="card net-card" style="margin-bottom:16px">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Мій дохід vs дохід дружини</div>
+            <div class="card-sub" id="netPanelIncSub">Липень 2026</div>
+          </div>
+        </div>
+        <div class="split-bar" id="incSplitBar" style="margin-top:6px"></div>
+        <div class="net-list" id="netPanelInc"></div>
+      </div>
+
       <div class="grid-2">
         <div class="card">
           <div class="card-head"><div class="card-title">Джерела доходу</div><div class="card-sub" id="incPeriod" style="margin-left:auto">Липень 2026</div></div>
@@ -1116,10 +1130,31 @@ function netRowsHTML(b){
     <div class="net-row total"><span class="k">Чистий мій дохід</span><span class="v ${b.net>=0?'pos':'neg'}">${fmt(b.net)} zł</span></div>`;
 }
 function renderNetPanel(){
-  const el=$('#netPanel'); if(!el)return;
   const b=netBreakdownPeriod();
-  el.innerHTML = netRowsHTML(b);
-  const sub=$('#netPanelSub'); if(sub) sub.textContent=capitalize(PERIOD.label);
+  const el=$('#netPanel');
+  if(el){
+    el.innerHTML = netRowsHTML(b);
+    const sub=$('#netPanelSub'); if(sub) sub.textContent=capitalize(PERIOD.label);
+  }
+  // сторінка «Доходи»: мій дохід vs дохід дружини
+  const el2=$('#netPanelInc');
+  if(el2){
+    const sub2=$('#netPanelIncSub'); if(sub2) sub2.textContent=capitalize(PERIOD.label);
+    el2.innerHTML =
+      `<div class="net-row"><span class="k">Дохід загальний</span><span class="v">${fmt(b.incAll)} zł</span></div>
+       <div class="net-row"><span class="k"><i class="dot dot-inc" style="margin-right:7px"></i>Мій дохід</span><span class="v pos">${fmt(b.incMine)} zł</span></div>
+       <div class="net-row"><span class="k"><i class="dot" style="background:#5B7A8C;margin-right:7px"></i>Дохід дружини</span><span class="v">${fmt(b.incOther)} zł</span></div>
+       <div class="net-row sub"><span class="k">− ZUS / PIT (мої)</span><span class="v neg">−${fmt(b.taxes)} zł</span></div>
+       <div class="net-row total"><span class="k">Чистий мій дохід</span><span class="v ${b.net>=0?'pos':'neg'}">${fmt(b.net)} zł</span></div>`;
+    const bar=$('#incSplitBar');
+    if(bar){
+      const tot=b.incAll||1;
+      const mp=Math.round(b.incMine/tot*100), op=100-mp;
+      bar.innerHTML =
+        `<div class="seg-mine" style="flex:0 0 ${mp}%">${mp>10?mp+'%':''}</div>`+
+        `<div class="seg-other" style="flex:0 0 ${op}%">${op>10?op+'%':''}</div>`;
+    }
+  }
 }
 
 /* ============ STAT CARDS ============ */
@@ -1854,13 +1889,13 @@ function renderAll(){
   renderCatBars('expBars', [...expenseCats].sort((a,b)=>catValueOf(b)-catValueOf(a)));
   renderCatBars('incBars', incomeCats);
   const incTotal = incomeCats.reduce((s,c)=>s+(c.value||0),0);
-  const salary = (incomeCats.find(c=>/зарплат/i.test(c.name))||{}).value||0;
-  const clients = incTotal - salary;
-  const salaryPct = incTotal ? Math.round(salary/incTotal*100) : 0;
+  const nbInc = netBreakdownPeriod();
+  const minePct  = incTotal ? Math.round(nbInc.incMine/incTotal*100) : 0;
+  const otherPct = incTotal ? Math.round(nbInc.incOther/incTotal*100) : 0;
   miniStats('incStats',[
-    {name:'Дохід за '+PERIOD.label.split(' ')[0], val:incTotal, sub:PERIOD.label, ic:'ic-income', icon:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
-    {name:'Зарплата', val:salary, sub:salaryPct+'% доходу', ic:'ic-income', icon:'<rect x="3" y="6" width="18" height="12" rx="2"/>'},
-    {name:'Від клієнтів', val:clients, sub:'сайти + дизайн', ic:'ic-income', icon:'<path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>'},
+    {name:'Дохід загальний', val:incTotal, sub:PERIOD.label, ic:'ic-income', icon:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
+    {name:'Мій дохід', val:nbInc.incMine, sub:minePct+'% доходу · без ZUS/PIT: '+fmt(nbInc.net)+' zł', ic:'ic-income', icon:'<path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>'},
+    {name:'Дохід дружини', val:nbInc.incOther, sub:otherPct+'% доходу', ic:'ic-balance', icon:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>'},
   ]);
   refreshExpStats();
   renderNetPanel();
