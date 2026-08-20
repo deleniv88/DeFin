@@ -339,6 +339,18 @@
   .year-line .k{color:var(--muted)}
   .year-line .v{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600}
   .year-net{margin-top:13px;padding-top:13px;border-top:1px solid var(--border)}
+  .year-sep{height:1px;background:var(--border);margin:13px 0}
+  .net-list{display:flex;flex-direction:column;margin-top:6px}
+  .net-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;font-size:13.5px;border-top:1px solid var(--border)}
+  .net-row:first-child{border-top:none}
+  .net-row .k{color:var(--muted)}
+  .net-row .v{font-family:var(--display);font-weight:600;font-variant-numeric:tabular-nums}
+  .net-row.sub .k{padding-left:12px;color:var(--faint);font-size:12.5px}
+  .net-row .v.neg{color:var(--expense)}
+  .net-row .v.pos{color:var(--income)}
+  .net-row.total{border-top:1.5px solid var(--border-strong);margin-top:4px;padding-top:12px}
+  .net-row.total .k{color:var(--ink);font-weight:600;font-size:14px}
+  .net-row.total .v{font-size:19px;font-weight:700}
 
   .placeholder{color:var(--muted);font-size:14px;padding:40px 0;text-align:center}
 
@@ -587,6 +599,16 @@
     <!-- ============ OVERVIEW ============ -->
     <section class="page active" data-page="overview">
       <div class="stats" id="statsRow"></div>
+
+      <div class="card net-card" style="margin-bottom:16px">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Чистий дохід</div>
+            <div class="card-sub" id="netPanelSub">Липень 2026</div>
+          </div>
+        </div>
+        <div class="net-list" id="netPanel"></div>
+      </div>
 
       <div class="grid-2">
         <div class="card flow-card">
@@ -925,6 +947,16 @@ const DB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
 const sb = DB_ON ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const MONTHS_FULL = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
+
+/* ============================================================
+   ЧИСТИЙ ДОХІД — які категорії вважати податками, а які «не моїм» доходом.
+   Якщо назви в тебе інші — просто відредагуй ці списки.
+   ============================================================ */
+const TAX_KEYWORDS   = ['zus','зус','pit','піт','подат'];   // ZUS, PIT, податки
+const OTHER_INCOME   = ['марта','marta'];                    // дохід дружини (не мій)
+const matchesAny = (name, list) => list.some(k => String(name||'').toLowerCase().includes(k));
+const isTaxCat      = c => matchesAny(c && c.name, TAX_KEYWORDS);
+const isOtherIncome = c => matchesAny(c && c.name, OTHER_INCOME);
 let PERIOD = { year: 2026, month: 6, label: 'липень 2026' }; // демо: липень 2026
 const capitalize = s => s.charAt(0).toUpperCase()+s.slice(1);
 
@@ -1032,6 +1064,45 @@ function yearTotals(y){
   const inc = d.reduce((s,m)=>s+m[0],0);
   const exp = d.reduce((s,m)=>s+m[1],0);
   return {inc, exp, net:inc-exp};
+}
+
+/* ============ ЧИСТИЙ ДОХІД (без податків / без чужого доходу) ============ */
+// Розклад за поточний період (з уже відфільтрованих категорій)
+function netBreakdownPeriod(){
+  const incAll   = incomeCats.reduce((s,c)=>s+(c.value||0),0);
+  const incOther = incomeCats.filter(isOtherIncome).reduce((s,c)=>s+(c.value||0),0);
+  const taxes    = [...expenseCats,...expenseCatsExtra].filter(isTaxCat).reduce((s,c)=>s+catValueOf(c),0);
+  const incMine  = incAll - incOther;
+  return { incAll, incOther, incMine, taxes, net: incMine - taxes };
+}
+// Розклад за конкретний рік (з «сирих» операцій)
+function netBreakdownYear(y){
+  const src=(typeof _rawTxs!=='undefined' && _rawTxs)?_rawTxs:[];
+  const cats=(typeof _rawCats!=='undefined' && _rawCats)?_rawCats:[];
+  const byId={}; cats.forEach(c=>byId[c.id]=c);
+  let incAll=0, incOther=0, taxes=0;
+  src.forEach(t=>{
+    const d=new Date(t.occurred_at); if(d.getFullYear()!==y) return;
+    const c=byId[t.category_id]; const amt=Number(t.amount)||0;
+    if(t.type==='income'){ incAll+=amt; if(isOtherIncome(c)) incOther+=amt; }
+    else if(isTaxCat(c)) taxes+=amt;
+  });
+  const incMine=incAll-incOther;
+  return { incAll, incOther, incMine, taxes, net: incMine - taxes };
+}
+function netRowsHTML(b){
+  return `
+    <div class="net-row"><span class="k">Дохід загальний</span><span class="v">${fmt(b.incAll)} zł</span></div>
+    ${b.incOther>0?`<div class="net-row sub"><span class="k">− дохід дружини</span><span class="v neg">−${fmt(b.incOther)} zł</span></div>`:''}
+    <div class="net-row"><span class="k">Мій дохід</span><span class="v">${fmt(b.incMine)} zł</span></div>
+    <div class="net-row sub"><span class="k">− ZUS / PIT</span><span class="v neg">−${fmt(b.taxes)} zł</span></div>
+    <div class="net-row total"><span class="k">Чистий мій дохід</span><span class="v ${b.net>=0?'pos':'neg'}">${fmt(b.net)} zł</span></div>`;
+}
+function renderNetPanel(){
+  const el=$('#netPanel'); if(!el)return;
+  const b=netBreakdownPeriod();
+  el.innerHTML = netRowsHTML(b);
+  const sub=$('#netPanelSub'); if(sub) sub.textContent=capitalize(PERIOD.label);
 }
 
 /* ============ STAT CARDS ============ */
@@ -1392,6 +1463,7 @@ function renderAnalytics(){
   const years=[cy-2, cy-1, cy];
   $('#yearCards').innerHTML = years.map(y=>{
     const t=yearTotals(y);
+    const b=netBreakdownYear(y);
     const isCur=y===cy;
     const partial = isCur ? ` <span style="color:var(--faint);font-weight:400;font-size:11px">(${PERIOD.month+1} міс.)</span>` : '';
     return `<div class="year-card ${isCur?'this':''}">
@@ -1399,6 +1471,10 @@ function renderAnalytics(){
       <div class="year-line"><span class="k">Доходи</span><span class="v up">${fmt(t.inc)} zł</span></div>
       <div class="year-line"><span class="k">Витрати</span><span class="v" style="color:var(--expense)">${fmt(t.exp)} zł</span></div>
       <div class="year-line year-net"><span class="k">Заощаджено</span><span class="v">${fmt(t.net)} zł</span></div>
+      <div class="year-sep"></div>
+      ${b.incOther>0?`<div class="year-line"><span class="k">Мій дохід</span><span class="v">${fmt(b.incMine)} zł</span></div>`:''}
+      <div class="year-line"><span class="k">ZUS / PIT</span><span class="v" style="color:var(--expense)">−${fmt(b.taxes)} zł</span></div>
+      <div class="year-line"><span class="k" style="font-weight:600">Чистий мій дохід</span><span class="v ${b.net>=0?'up':''}" style="font-weight:700">${fmt(b.net)} zł</span></div>
     </div>`;
   }).join('');
   const combined=[]; const labels=[];
@@ -1769,6 +1845,7 @@ function renderAll(){
     {name:'Від клієнтів', val:clients, sub:'сайти + дизайн', ic:'ic-income', icon:'<path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>'},
   ]);
   refreshExpStats();
+  renderNetPanel();
   renderAnalytics();
   renderCategoriesPage();
   renderSplit();
