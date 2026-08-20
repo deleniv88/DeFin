@@ -953,10 +953,13 @@ const MONTHS_FULL = ['січень','лютий','березень','квіте�
    Якщо назви в тебе інші — просто відредагуй ці списки.
    ============================================================ */
 const TAX_KEYWORDS   = ['zus','зус','pit','піт','подат'];   // ZUS, PIT, податки
-const OTHER_INCOME   = ['марта','marta'];                    // дохід дружини (не мій)
+const OTHER_INCOME   = ['март','mart'];                      // дохід дружини (Марта / Марти / Marta)
 const matchesAny = (name, list) => list.some(k => String(name||'').toLowerCase().includes(k));
 const isTaxCat      = c => matchesAny(c && c.name, TAX_KEYWORDS);
 const isOtherIncome = c => matchesAny(c && c.name, OTHER_INCOME);
+// операція «не моя», якщо збіг у категорії, підкатегорії, клієнті або нотатці
+const txIsOther = t => matchesAny(t&&t.cat, OTHER_INCOME) || matchesAny(t&&t.sub, OTHER_INCOME)
+                    || matchesAny(t&&t.client, OTHER_INCOME) || matchesAny(t&&t.note, OTHER_INCOME);
 let PERIOD = { year: 2026, month: 6, label: 'липень 2026' }; // демо: липень 2026
 const capitalize = s => s.charAt(0).toUpperCase()+s.slice(1);
 
@@ -1070,7 +1073,15 @@ function yearTotals(y){
 // Розклад за поточний період (з уже відфільтрованих категорій)
 function netBreakdownPeriod(){
   const incAll   = incomeCats.reduce((s,c)=>s+(c.value||0),0);
-  const incOther = incomeCats.filter(isOtherIncome).reduce((s,c)=>s+(c.value||0),0);
+  // 1) за категорією
+  const catOther = incomeCats.filter(isOtherIncome).reduce((s,c)=>s+(c.value||0),0);
+  // 2) якщо окремої категорії немає — шукаємо в операціях (клієнт/нотатка/підкатегорія)
+  let incOther = catOther;
+  if(catOther===0){
+    incOther = transactions
+      .filter(t=>t.type==='income' && txIsOther(t))
+      .reduce((s,t)=>s+Math.abs(t.amt||0),0);
+  }
   const taxes    = [...expenseCats,...expenseCatsExtra].filter(isTaxCat).reduce((s,c)=>s+catValueOf(c),0);
   const incMine  = incAll - incOther;
   return { incAll, incOther, incMine, taxes, net: incMine - taxes };
@@ -1084,7 +1095,13 @@ function netBreakdownYear(y){
   src.forEach(t=>{
     const d=new Date(t.occurred_at); if(d.getFullYear()!==y) return;
     const c=byId[t.category_id]; const amt=Number(t.amount)||0;
-    if(t.type==='income'){ incAll+=amt; if(isOtherIncome(c)) incOther+=amt; }
+    if(t.type==='income'){
+      incAll+=amt;
+      const parent = c && c.parent_id ? byId[c.parent_id] : null;
+      const other = isOtherIncome(c) || isOtherIncome(parent)
+        || matchesAny(t.client, OTHER_INCOME) || matchesAny(t.note, OTHER_INCOME);
+      if(other) incOther+=amt;
+    }
     else if(isTaxCat(c)) taxes+=amt;
   });
   const incMine=incAll-incOther;
@@ -1120,11 +1137,12 @@ function renderStats(){
     prevName = MONTHS_FULL[PERIOD.month-1];
   }
   const balName = PERIOD.month===-1 ? 'Баланс за рік' : 'Баланс місяця';
+  const nb = netBreakdownPeriod();
   const cards = [
     {name:balName, ic:'balance', val:bal, delta:null, iconPath:'<path d="M3 6h18v12H3z"/><path d="M3 10h18"/>'},
     {name:'Доходи', ic:'income', val:inc, delta:incD, iconPath:'<path d="M12 19V5M6 11l6-6 6 6"/>'},
     {name:'Витрати', ic:'expense', val:exp, delta:expD, invert:true, iconPath:'<path d="M12 5v14M6 13l6 6 6-6"/>'},
-    {name:'Заощаджено', ic:'save', val:bal, delta:null, iconPath:'<path d="M20 12V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/><circle cx="16" cy="12" r="1.5"/>'},
+    {name:'Чистий мій дохід', ic:'save', val:nb.net, delta:null, sub:'без ZUS/PIT'+(nb.incOther>0?' і зп дружини':''), iconPath:'<path d="M20 12V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/><circle cx="16" cy="12" r="1.5"/>'},
   ];
   $('#statsRow').innerHTML = cards.map(c=>{
     let delta='';
@@ -1133,7 +1151,7 @@ function renderStats(){
       const arrow = c.delta>=0 ? '<path d="M7 14l5-5 5 5"/>' : '<path d="M7 10l5 5 5-5"/>';
       delta = `<div class="stat-delta ${good?'up':'down'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${arrow}</svg>${Math.abs(c.delta).toFixed(1)}%<span class="base">від ${prevName}</span></div>`;
     } else {
-      delta = `<div class="stat-delta"><span class="base">${PERIOD.label}</span></div>`;
+      delta = `<div class="stat-delta"><span class="base">${c.sub||PERIOD.label}</span></div>`;
     }
     return `<div class="stat">
       <div class="stat-top">
