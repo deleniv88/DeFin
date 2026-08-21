@@ -1775,11 +1775,12 @@ async function setPeriodAmountDB(categoryId, amount){
     .eq('category_id', categoryId).gte('occurred_at', start).lte('occurred_at', end);
   const realSum = (real||[]).filter(r=>r.source!=='adjust').reduce((s,r)=>s+Number(r.amount),0);
   const diff = amount - realSum;
-  if(diff > 0.001){
+  if(Math.abs(diff) > 0.001){
     const occ = wholeYear ? `${y}-12-01` : `${y}-${String(m+1).padStart(2,'0')}-15`;
+    // від'ємна корекція теж дозволена — так можна зменшити суму нижче за реальні операції
     await sb.from('transactions').insert({
       category_id: categoryId, type:'expense', amount: diff,
-      note: 'корекція', occurred_at: occ, source:'adjust'
+      note: diff<0 ? 'корекція (зменшення)' : 'корекція', occurred_at: occ, source:'adjust'
     });
   }
 }
